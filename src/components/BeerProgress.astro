@@ -9,17 +9,19 @@ type Props = {
   updatedAt?: string;
 };
 
+const badgeImageUrl = '/964e85b057fc7f7c5447f0fb2b247b2e-fb_300x300.jpg';
+
 const {
   username,
   displayName,
-  avatarUrl = '/badge-photo.svg',
+  avatarUrl = badgeImageUrl,
   current,
   target,
   source = 'fallback',
   updatedAt = '',
 } = Astro.props;
 
-const resolvedAvatarUrl = avatarUrl || '/badge-photo.svg';
+const resolvedAvatarUrl = avatarUrl || badgeImageUrl;
 ---
 
 <beer-progress-card
@@ -35,9 +37,10 @@ const resolvedAvatarUrl = avatarUrl || '/badge-photo.svg';
 <script>
   class BeerProgressCard extends HTMLElement {
     connectedCallback(): void {
+      const badgeImageUrl = '/964e85b057fc7f7c5447f0fb2b247b2e-fb_300x300.jpg';
       const username = this.getAttribute('username') || 'Snoothy';
       const displayName = this.getAttribute('display-name') || username;
-      const avatarUrl = this.getAttribute('avatar-url') || '/badge-photo.svg';
+      const avatarUrl = this.getAttribute('avatar-url') || badgeImageUrl;
       const current = Number(this.getAttribute('current') || 0);
       const target = Math.max(Number(this.getAttribute('target') || 1000), 1);
       const source = this.getAttribute('source') || 'fallback';
