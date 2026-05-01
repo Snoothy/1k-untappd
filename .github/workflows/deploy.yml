@@ -34,6 +34,10 @@ jobs:
 
       - name: Build site
         run: npm run build
+        env:
+          UNTAPPD_CLIENT_ID: ${{ secrets.UNTAPPD_CLIENT_ID }}
+          UNTAPPD_CLIENT_SECRET: ${{ secrets.UNTAPPD_CLIENT_SECRET }}
+          UNTAPPD_USERNAME: ${{ secrets.UNTAPPD_USERNAME }}
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
