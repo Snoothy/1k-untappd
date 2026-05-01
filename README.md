@@ -2,7 +2,7 @@
 
 A small Astro + Preact site for tracking the road to 1,000 Untappd check-ins.
 
-The current placeholder progress is `800 / 1000`.
+The site uses fallback progress data, currently `800 / 1000`, when Untappd secrets are not configured or the Untappd API request fails. This keeps GitHub Pages deployments green.
 
 ## Development
 
@@ -10,6 +10,22 @@ The current placeholder progress is `800 / 1000`.
 npm install
 npm run dev
 ```
+
+## Fetch Untappd data
+
+For live data, add these as GitHub Actions repository secrets:
+
+- `UNTAPPD_CLIENT_ID`
+- `UNTAPPD_CLIENT_SECRET`
+- `UNTAPPD_USERNAME`
+
+The build runs:
+
+```bash
+npm run fetch:untappd
+```
+
+If any secret is missing, `scripts/fetch-untappd.mjs` writes fallback data to `src/data/progress.json`.
 
 ## Build
 
