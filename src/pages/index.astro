@@ -1,11 +1,7 @@
 ---
 import ProgressBar from '../components/ProgressBar';
+import progress from '../data/progress.json';
 import '../styles/global.css';
-
-const progress = {
-  current: 800,
-  target: 1000,
-};
 ---
 
 <html lang="en">
@@ -17,7 +13,7 @@ const progress = {
   </head>
   <body>
     <main class="site-shell">
-      <ProgressBar current={progress.current} target={progress.target} />
+      <ProgressBar {...progress} />
     </main>
   </body>
 </html>
