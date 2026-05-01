@@ -12,7 +12,7 @@ type Props = {
 const {
   username,
   displayName,
-  avatarUrl = '',
+  avatarUrl = '/badge.svg',
   current,
   target,
   source = 'fallback',
@@ -23,7 +23,7 @@ const {
 <beer-progress-card
   username={username}
   display-name={displayName}
-  avatar-url={avatarUrl}
+  avatar-url={avatarUrl || '/badge.svg'}
   current={current}
   target={target}
   source={source}
@@ -35,7 +35,7 @@ const {
     connectedCallback(): void {
       const username = this.getAttribute('username') || 'Snoothy';
       const displayName = this.getAttribute('display-name') || username;
-      const avatarUrl = this.getAttribute('avatar-url') || '';
+      const avatarUrl = this.getAttribute('avatar-url') || '/badge.svg';
       const current = Number(this.getAttribute('current') || 0);
       const target = Math.max(Number(this.getAttribute('target') || 1000), 1);
       const source = this.getAttribute('source') || 'fallback';
@@ -45,7 +45,6 @@ const {
       const isLive = source === 'scraped' || source === 'untappd';
       const formatter = new Intl.NumberFormat('en-US');
       const updatedText = this.formatUpdatedAt(updatedAt);
-      const initials = this.getInitials(displayName || username);
       const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
 
       root.innerHTML = `
@@ -53,7 +52,7 @@ const {
           :host {
             display: block;
             width: 100%;
-            min-height: 100vh;
+            min-height: 100svh;
             color: #fff8e8;
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
           }
@@ -63,11 +62,11 @@ const {
           .frame {
             position: relative;
             width: 100%;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
+            min-height: 100svh;
+            display: grid;
+            place-items: center;
             overflow: hidden;
-            padding: clamp(2rem, 5vw, 4.5rem) clamp(1.25rem, 5vw, 4rem);
+            padding: clamp(1.25rem, 4vw, 4rem);
             background:
               radial-gradient(circle at 20% 6%, rgba(255, 179, 37, 0.26), transparent 15rem),
               radial-gradient(circle at 86% 43%, rgba(146, 77, 7, 0.34), transparent 24rem),
@@ -111,30 +110,25 @@ const {
             width: min(100%, 58rem);
             display: flex;
             flex-direction: column;
-            gap: clamp(2.7rem, 5vw, 4.6rem);
+            gap: clamp(2rem, 5vw, 4.6rem);
           }
 
           .profile {
             display: grid;
             grid-template-columns: auto 1fr;
             align-items: center;
-            gap: clamp(1.8rem, 4vw, 3rem);
+            gap: clamp(1.5rem, 4vw, 3rem);
           }
 
           .avatar {
-            width: clamp(9.8rem, 20vw, 14.8rem);
+            width: clamp(8.5rem, 18vw, 14.8rem);
             aspect-ratio: 1;
             display: grid;
             place-items: center;
             overflow: hidden;
-            border: clamp(0.28rem, 0.8vw, 0.42rem) solid #ffbd3f;
+            border: clamp(0.24rem, 0.8vw, 0.42rem) solid #ffbd3f;
             border-radius: 50%;
-            background:
-              radial-gradient(circle at 38% 25%, rgba(255, 246, 197, 0.9), transparent 2.3rem),
-              radial-gradient(circle at 36% 24%, rgba(255, 226, 128, 0.45), transparent 5rem),
-              linear-gradient(145deg, #2b1708, #090807 56%, #010101);
-            color: #fff8ed;
-            font: 700 clamp(2.7rem, 7vw, 5rem) Georgia, 'Times New Roman', serif;
+            background: #090807;
             box-shadow:
               0 0 0 1rem rgba(255, 169, 20, 0.1),
               0 0 3rem rgba(255, 168, 17, 0.6),
@@ -147,29 +141,29 @@ const {
             margin: 0;
             color: #fff8ed;
             font-family: Georgia, 'Times New Roman', serif;
-            font-size: clamp(4.2rem, 9vw, 7.1rem);
+            font-size: clamp(3.5rem, 9vw, 7.1rem);
             line-height: 0.85;
             letter-spacing: -0.065em;
             text-shadow: 0 0 1.6rem rgba(255, 224, 163, 0.18);
           }
 
           .tagline {
-            margin: 0.65rem 0 1.55rem;
+            margin: 0.55rem 0 1.25rem;
             color: #c0ad9a;
-            font-size: clamp(1.35rem, 3vw, 2.05rem);
+            font-size: clamp(1.1rem, 2.6vw, 2.05rem);
             font-weight: 800;
           }
 
           .badge {
             display: inline-flex;
             align-items: center;
-            gap: 1rem;
-            padding: 1rem 2.3rem;
+            gap: 0.8rem;
+            padding: 0.8rem 1.8rem;
             border: 1px solid rgba(170, 94, 38, 0.68);
             border-radius: 999px;
             background: rgba(0, 0, 0, 0.3);
             color: #fff8ed;
-            font-size: clamp(1.15rem, 2.8vw, 1.9rem);
+            font-size: clamp(1rem, 2.4vw, 1.9rem);
             font-weight: 900;
             box-shadow: inset 0 0 1.5rem rgba(255, 157, 0, 0.07);
           }
@@ -178,16 +172,14 @@ const {
             position: relative;
             z-index: 0;
             overflow: hidden;
-            padding: clamp(4.6rem, 8vw, 6.5rem) clamp(2.25rem, 6vw, 4.1rem) clamp(3.2rem, 6vw, 5.1rem);
+            padding: clamp(3rem, 7vw, 6.5rem) clamp(1.7rem, 5vw, 4.1rem) clamp(2.2rem, 5vw, 5.1rem);
             border: 1px solid rgba(179, 98, 42, 0.62);
-            border-radius: clamp(2rem, 4vw, 3.4rem);
+            border-radius: clamp(1.6rem, 4vw, 3.4rem);
             background:
               linear-gradient(90deg, rgba(255, 169, 24, 0) 0 66%, rgba(151, 91, 14, 0.44) 66% 100%),
               radial-gradient(circle at 86% 22%, rgba(255, 188, 55, 0.13), transparent 18rem),
               linear-gradient(145deg, rgba(10, 9, 6, 0.96), rgba(5, 4, 3, 0.98));
-            box-shadow:
-              0 1rem 4rem rgba(0, 0, 0, 0.64),
-              inset 0 0 4.5rem rgba(255, 170, 31, 0.035);
+            box-shadow: 0 1rem 4rem rgba(0, 0, 0, 0.64), inset 0 0 4.5rem rgba(255, 170, 31, 0.035);
           }
 
           .card::after {
@@ -210,10 +202,10 @@ const {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 2.3rem;
-            margin-bottom: clamp(2.4rem, 5vw, 4rem);
+            gap: 1.8rem;
+            margin-bottom: clamp(1.8rem, 4vw, 4rem);
             color: #f6a51c;
-            font-size: 1.8rem;
+            font-size: 1.5rem;
           }
 
           .ornament::before,
@@ -228,10 +220,10 @@ const {
 
           h1 {
             max-width: 12ch;
-            margin: 0 auto clamp(3.2rem, 6vw, 4.7rem);
+            margin: 0 auto clamp(2.2rem, 5vw, 4.7rem);
             color: #fff8ed;
             font-family: Georgia, 'Times New Roman', serif;
-            font-size: clamp(4.4rem, 12vw, 7.7rem);
+            font-size: clamp(3.5rem, 10.5vw, 7.7rem);
             line-height: 0.88;
             letter-spacing: -0.06em;
             text-align: left;
@@ -242,30 +234,30 @@ const {
             display: flex;
             align-items: baseline;
             justify-content: center;
-            gap: clamp(0.75rem, 2.5vw, 1.8rem);
-            margin-bottom: clamp(2.6rem, 5vw, 4rem);
+            gap: clamp(0.55rem, 2.2vw, 1.8rem);
+            margin-bottom: clamp(2rem, 4vw, 4rem);
             line-height: 0.9;
           }
 
           .current {
             color: #ffb11e;
-            font: 900 clamp(6.6rem, 19vw, 11.2rem) Inter, ui-sans-serif, system-ui, sans-serif;
+            font: 900 clamp(5.4rem, 17vw, 11.2rem) Inter, ui-sans-serif, system-ui, sans-serif;
             letter-spacing: -0.09em;
             text-shadow: 0 0 0.2rem #ffe79b, 0 0 1.1rem rgba(255, 172, 15, 0.85), 0 0 3.2rem rgba(255, 124, 0, 0.55);
           }
 
           .target {
             color: #d0c2b3;
-            font: 500 clamp(5.2rem, 15vw, 9rem) Georgia, 'Times New Roman', serif;
+            font: 500 clamp(4.1rem, 13vw, 9rem) Georgia, 'Times New Roman', serif;
             letter-spacing: -0.09em;
             text-shadow: 0 0 1.2rem rgba(255, 226, 188, 0.25);
           }
 
           .bar {
             position: relative;
-            height: clamp(4rem, 8vw, 6.2rem);
+            height: clamp(3.25rem, 7vw, 6.2rem);
             overflow: hidden;
-            border: 0.38rem solid rgba(120, 62, 30, 0.95);
+            border: 0.32rem solid rgba(120, 62, 30, 0.95);
             border-radius: 999px;
             background: rgba(4, 4, 3, 0.95);
             box-shadow: inset 0 0 1.2rem rgba(0, 0, 0, 0.95), 0 0 2.2rem rgba(255, 156, 8, 0.2);
@@ -288,8 +280,8 @@ const {
 
           .fill::before {
             position: absolute;
-            inset: 0.8rem 1.4rem auto;
-            height: 0.48rem;
+            inset: 0.7rem 1.4rem auto;
+            height: 0.42rem;
             content: '';
             border-radius: 999px;
             background: rgba(255, 255, 219, 0.84);
@@ -298,10 +290,10 @@ const {
 
           .fill::after {
             position: absolute;
-            top: -0.7rem;
-            right: -0.9rem;
-            width: 2rem;
-            height: 2rem;
+            top: -0.65rem;
+            right: -0.85rem;
+            width: 1.8rem;
+            height: 1.8rem;
             content: '';
             background: #fff4b8;
             clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
@@ -311,16 +303,16 @@ const {
           .stats {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            margin-top: clamp(3.4rem, 6vw, 5.5rem);
-            padding-top: clamp(2.4rem, 5vw, 3.7rem);
+            margin-top: clamp(2.4rem, 5vw, 5.5rem);
+            padding-top: clamp(1.8rem, 4vw, 3.7rem);
             border-top: 1px solid rgba(255, 244, 219, 0.16);
           }
 
           .stat {
             display: grid;
             justify-items: center;
-            gap: 0.9rem;
-            padding: 0 clamp(0.9rem, 3vw, 2.3rem);
+            gap: 0.75rem;
+            padding: 0 clamp(0.7rem, 2vw, 2.3rem);
             text-align: center;
           }
 
@@ -328,7 +320,7 @@ const {
 
           .icon {
             position: relative;
-            width: clamp(4.2rem, 8vw, 5.8rem);
+            width: clamp(3.6rem, 7vw, 5.8rem);
             aspect-ratio: 1;
             display: grid;
             place-items: center;
@@ -344,31 +336,87 @@ const {
             position: absolute;
             right: 0.35rem;
             bottom: 0.35rem;
-            width: 0.9rem;
-            height: 0.9rem;
+            width: 0.75rem;
+            height: 0.75rem;
             border-radius: 50%;
             background: #21d34d;
             box-shadow: 0 0 0.9rem #21d34d;
           }
 
-          .value { color: #ffc64a; font: 800 clamp(2rem, 5vw, 3.25rem) Georgia, 'Times New Roman', serif; line-height: 1; }
-          .label { color: #b8aa98; font-size: clamp(1rem, 2.4vw, 1.45rem); line-height: 1.25; }
+          .value { color: #ffc64a; font: 800 clamp(1.7rem, 4vw, 3.25rem) Georgia, 'Times New Roman', serif; line-height: 1; }
+          .label { color: #b8aa98; font-size: clamp(0.9rem, 2vw, 1.45rem); line-height: 1.2; }
           .link { color: inherit; text-decoration: none; }
 
           @media (max-width: 720px) {
-            .frame { padding: 2rem 1.15rem; }
-            .content { width: min(100%, 32rem); gap: 2.5rem; }
-            .profile { gap: 1.4rem; }
-            .avatar { width: 10rem; }
-            .name { font-size: clamp(3.5rem, 15vw, 5.2rem); }
-            .tagline { font-size: clamp(1.05rem, 4.6vw, 1.45rem); }
-            .badge { padding: 0.8rem 1.5rem; font-size: 1.15rem; }
-            .card { padding: 4rem 1.85rem 3rem; }
-            h1 { font-size: clamp(3.4rem, 16vw, 5rem); }
-            .current { font-size: clamp(5.4rem, 23vw, 7.7rem); }
-            .target { font-size: clamp(4rem, 19vw, 6.1rem); }
-            .stats { grid-template-columns: 1fr; gap: 1.7rem; }
-            .stat + .stat { padding-top: 1.7rem; border-left: 0; border-top: 1px solid rgba(255, 191, 97, 0.18); }
+            :host { min-height: 100svh; }
+            .frame {
+              min-height: 100svh;
+              padding: 0.65rem;
+              align-items: stretch;
+            }
+            .content {
+              width: min(100%, 28rem);
+              min-height: calc(100svh - 1.3rem);
+              gap: 0.7rem;
+              justify-content: center;
+            }
+            .profile {
+              gap: 0.85rem;
+              grid-template-columns: auto minmax(0, 1fr);
+            }
+            .avatar {
+              width: clamp(4.2rem, 19vw, 5.7rem);
+              border-width: 0.18rem;
+              box-shadow: 0 0 0 0.35rem rgba(255, 169, 20, 0.1), 0 0 1.6rem rgba(255, 168, 17, 0.55);
+            }
+            .name { font-size: clamp(2rem, 11vw, 3rem); line-height: 0.86; }
+            .tagline { margin: 0.25rem 0 0.45rem; font-size: clamp(0.78rem, 3.6vw, 1rem); }
+            .badge { gap: 0.45rem; padding: 0.45rem 0.9rem; font-size: 0.82rem; }
+            .card {
+              padding: 1.1rem 0.95rem 0.95rem;
+              border-radius: 1.35rem;
+            }
+            .ornament { gap: 1rem; margin-bottom: 0.8rem; font-size: 1rem; }
+            .ornament::before, .ornament::after { width: 2.3rem; }
+            h1 {
+              max-width: 13ch;
+              margin-bottom: 1rem;
+              font-size: clamp(2.2rem, 13.5vw, 3.55rem);
+              line-height: 0.86;
+            }
+            .count { gap: 0.45rem; margin-bottom: 1rem; }
+            .current { font-size: clamp(3.6rem, 20vw, 5.25rem); }
+            .target { font-size: clamp(2.9rem, 15vw, 4.15rem); }
+            .bar { height: clamp(2.25rem, 10vw, 3rem); border-width: 0.24rem; }
+            .fill::before { inset: 0.42rem 0.8rem auto; height: 0.28rem; }
+            .fill::after { width: 1.1rem; height: 1.1rem; top: -0.38rem; right: -0.5rem; }
+            .stats {
+              grid-template-columns: repeat(3, minmax(0, 1fr));
+              gap: 0;
+              margin-top: 1rem;
+              padding-top: 0.9rem;
+            }
+            .stat { gap: 0.35rem; padding: 0 0.35rem; }
+            .stat + .stat { border-left: 1px solid rgba(255, 191, 97, 0.18); }
+            .icon { width: clamp(2.2rem, 10vw, 2.8rem); }
+            .value { font-size: clamp(1.2rem, 5.8vw, 1.65rem); }
+            .label { font-size: clamp(0.62rem, 3vw, 0.82rem); }
+          }
+
+          @media (max-width: 380px), (max-height: 700px) {
+            .content { gap: 0.5rem; }
+            .avatar { width: 4rem; }
+            .name { font-size: 2.2rem; }
+            .tagline { display: none; }
+            .badge { padding: 0.35rem 0.75rem; font-size: 0.72rem; }
+            .card { padding: 0.85rem 0.75rem 0.75rem; }
+            .ornament { margin-bottom: 0.45rem; }
+            h1 { font-size: 2.35rem; margin-bottom: 0.75rem; }
+            .current { font-size: 3.75rem; }
+            .target { font-size: 2.9rem; }
+            .bar { height: 2.15rem; }
+            .stats { margin-top: 0.75rem; padding-top: 0.7rem; }
+            .icon { width: 2rem; }
           }
         </style>
 
@@ -376,7 +424,7 @@ const {
           <div class="content">
             <header class="profile">
               <a class="avatar link" href="https://untappd.com/user/${username}" aria-label="Open ${displayName} on Untappd">
-                ${avatarUrl ? `<img src="${avatarUrl}" alt="" />` : `<span>${initials}</span>`}
+                <img src="${avatarUrl}" alt="" />
               </a>
               <div>
                 <h2 class="name">${displayName}</h2>
@@ -414,7 +462,7 @@ const {
                 </div>
                 <div class="stat">
                   <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>${isLive ? '<span class="dot"></span>' : ''}</div>
-                  <div class="value">${isLive ? 'Live data' : 'Demo data'}</div>
+                  <div class="value">${isLive ? 'Live' : 'Demo'}</div>
                   <div class="label">${updatedText}</div>
                 </div>
               </div>
@@ -422,16 +470,6 @@ const {
           </div>
         </section>
       `;
-    }
-
-    private getInitials(value: string): string {
-      return value
-        .split(/\s+/)
-        .filter(Boolean)
-        .map((part) => part.at(0))
-        .join('')
-        .slice(0, 2)
-        .toUpperCase() || 'S';
     }
 
     private formatUpdatedAt(value: string): string {
