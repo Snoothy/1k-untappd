@@ -1,0 +1,516 @@
+---
+type Props = {
+  username: string;
+  displayName: string;
+  avatarUrl?: string;
+  current: number;
+  target: number;
+  source?: string;
+  updatedAt?: string;
+};
+
+const {
+  username,
+  displayName,
+  avatarUrl = '',
+  current,
+  target,
+  source = 'fallback',
+  updatedAt = '',
+} = Astro.props;
+---
+
+<beer-progress-card
+  username={username}
+  display-name={displayName}
+  avatar-url={avatarUrl}
+  current={current}
+  target={target}
+  source={source}
+  updated-at={updatedAt}
+></beer-progress-card>
+
+<script>
+  class BeerProgressCard extends HTMLElement {
+    connectedCallback() {
+      const username = this.getAttribute('username') || 'Snoothy';
+      const displayName = this.getAttribute('display-name') || username;
+      const avatarUrl = this.getAttribute('avatar-url') || '';
+      const current = Number(this.getAttribute('current') || 0);
+      const target = Math.max(Number(this.getAttribute('target') || 1000), 1);
+      const source = this.getAttribute('source') || 'fallback';
+      const updatedAt = this.getAttribute('updated-at') || '';
+      const percentage = Math.min(100, Math.round((current / target) * 100));
+      const remaining = Math.max(target - current, 0);
+      const isLive = source === 'scraped' || source === 'untappd';
+      const formatter = new Intl.NumberFormat('en-US');
+      const updatedText = this.#formatUpdatedAt(updatedAt);
+      const initials = displayName
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((part) => part.at(0))
+        .join('')
+        .slice(0, 2)
+        .toUpperCase() || 'S';
+
+      if (!this.shadowRoot) {
+        this.attachShadow({ mode: 'open' });
+      }
+
+      this.shadowRoot.innerHTML = `
+        <style>
+          :host {
+            display: block;
+            width: min(100%, 66rem);
+            color: #fff8e8;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          }
+
+          * { box-sizing: border-box; }
+
+          .frame {
+            position: relative;
+            min-height: min(100vh, 68rem);
+            padding: clamp(1.25rem, 4vw, 3.75rem);
+            overflow: hidden;
+            border-radius: 2.75rem;
+            background:
+              radial-gradient(circle at 84% 42%, rgba(245, 158, 11, 0.22), transparent 18rem),
+              radial-gradient(circle at 18% 8%, rgba(251, 191, 36, 0.14), transparent 18rem),
+              linear-gradient(145deg, #020202 0%, #090604 45%, #010101 100%);
+            box-shadow: 0 2rem 8rem rgba(0, 0, 0, 0.72);
+            isolation: isolate;
+          }
+
+          .frame::before,
+          .frame::after {
+            position: absolute;
+            inset: auto;
+            content: '';
+            pointer-events: none;
+            z-index: -1;
+          }
+
+          .frame::before {
+            width: 25rem;
+            height: 25rem;
+            right: -8rem;
+            top: 17rem;
+            border-radius: 50%;
+            background:
+              radial-gradient(circle at 45% 48%, rgba(255, 194, 63, 0.55), transparent 0.18rem),
+              radial-gradient(circle at 54% 29%, rgba(255, 194, 63, 0.42), transparent 0.15rem),
+              radial-gradient(circle at 63% 57%, rgba(255, 194, 63, 0.36), transparent 0.22rem),
+              radial-gradient(circle at 31% 68%, rgba(255, 194, 63, 0.25), transparent 0.18rem),
+              radial-gradient(circle at 52% 52%, rgba(191, 96, 8, 0.52), transparent 15rem);
+            filter: blur(0.2px);
+            opacity: 0.74;
+          }
+
+          .frame::after {
+            inset: 0;
+            background-image:
+              radial-gradient(circle, rgba(255, 199, 78, 0.28) 0 1px, transparent 1.2px),
+              linear-gradient(115deg, transparent 0 58%, rgba(245, 158, 11, 0.05), transparent 74%);
+            background-size: 5.5rem 5.5rem, 100% 100%;
+            mask-image: linear-gradient(to bottom, transparent, black 20%, transparent 88%);
+            opacity: 0.18;
+          }
+
+          .profile {
+            display: flex;
+            align-items: center;
+            gap: clamp(1.4rem, 4vw, 2.3rem);
+            margin-left: clamp(0rem, 3vw, 1.8rem);
+          }
+
+          .avatar {
+            position: relative;
+            width: clamp(8rem, 16vw, 12rem);
+            aspect-ratio: 1;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            border: 0.18rem solid #ffbd3f;
+            border-radius: 50%;
+            background:
+              radial-gradient(circle at 40% 25%, #ffe6b4, transparent 30%),
+              linear-gradient(145deg, #5b2b0d, #18110d 48%, #030303);
+            color: #ffcf67;
+            font-size: clamp(2rem, 5vw, 4rem);
+            font-family: Georgia, 'Times New Roman', serif;
+            font-weight: 700;
+            box-shadow:
+              0 0 0 0.45rem rgba(255, 168, 17, 0.1),
+              0 0 2rem rgba(255, 168, 17, 0.75),
+              inset 0 0 2rem rgba(0, 0, 0, 0.55);
+          }
+
+          .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+
+          .name {
+            margin: 0;
+            color: #fff8ed;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: clamp(2.6rem, 6vw, 4.9rem);
+            line-height: 0.95;
+            letter-spacing: -0.06em;
+            text-shadow: 0 0 1.5rem rgba(255, 210, 132, 0.14);
+          }
+
+          .tagline {
+            margin: 0.45rem 0 1.1rem;
+            color: #bca88f;
+            font-size: clamp(1rem, 2vw, 1.45rem);
+            font-weight: 500;
+          }
+
+          .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.7rem;
+            padding: 0.65rem 1.1rem;
+            border: 1px solid rgba(255, 165, 35, 0.42);
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.28);
+            color: #ffcd58;
+            font-size: clamp(0.95rem, 1.8vw, 1.25rem);
+            font-weight: 800;
+            box-shadow: inset 0 0 1.5rem rgba(255, 157, 0, 0.07);
+          }
+
+          .card {
+            position: relative;
+            margin-top: clamp(2.5rem, 6vw, 4.3rem);
+            padding: clamp(2rem, 6vw, 5.2rem) clamp(1.4rem, 6vw, 4.6rem) clamp(2rem, 5vw, 4.3rem);
+            overflow: hidden;
+            border: 1px solid rgba(255, 165, 35, 0.45);
+            border-radius: 2rem;
+            background:
+              radial-gradient(circle at 92% 6%, rgba(255, 177, 39, 0.22), transparent 14rem),
+              linear-gradient(145deg, rgba(13, 10, 7, 0.96), rgba(9, 8, 6, 0.94));
+            box-shadow:
+              0 1rem 4rem rgba(0, 0, 0, 0.58),
+              inset 0 0 4rem rgba(255, 170, 31, 0.04);
+          }
+
+          .card::after {
+            position: absolute;
+            inset: 0 0 auto auto;
+            width: 34%;
+            height: 58%;
+            content: '';
+            background:
+              radial-gradient(circle at 30% 20%, rgba(255, 207, 87, 0.44), transparent 0.14rem),
+              radial-gradient(circle at 55% 38%, rgba(255, 193, 64, 0.35), transparent 0.18rem),
+              radial-gradient(circle at 75% 55%, rgba(255, 178, 39, 0.3), transparent 0.16rem),
+              radial-gradient(circle at 52% 74%, rgba(255, 183, 43, 0.32), transparent 0.2rem),
+              linear-gradient(135deg, rgba(255, 156, 8, 0.28), transparent 62%);
+            background-size: 4.2rem 4.2rem, 5rem 5rem, 4.7rem 4.7rem, 5.4rem 5.4rem, 100% 100%;
+            opacity: 0.55;
+            mask-image: linear-gradient(130deg, black, transparent 72%);
+            pointer-events: none;
+          }
+
+          .ornament {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.4rem;
+            margin-bottom: clamp(1.7rem, 3vw, 2.5rem);
+            color: #f6a51c;
+          }
+
+          .ornament::before,
+          .ornament::after {
+            width: 2.7rem;
+            height: 1px;
+            content: '';
+            background: linear-gradient(90deg, transparent, currentColor);
+            opacity: 0.6;
+          }
+
+          .ornament::after {
+            background: linear-gradient(90deg, currentColor, transparent);
+          }
+
+          h1 {
+            max-width: 100%;
+            margin: 0 auto clamp(2rem, 4vw, 3rem);
+            color: #fff8ed;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: clamp(2.9rem, 7vw, 5.3rem);
+            line-height: 0.95;
+            text-align: center;
+            letter-spacing: -0.055em;
+            text-shadow: 0 0 1.7rem rgba(255, 218, 151, 0.12);
+          }
+
+          .count {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: clamp(1rem, 3vw, 2.4rem);
+            margin-bottom: clamp(1.5rem, 3vw, 2.4rem);
+            line-height: 0.9;
+          }
+
+          .current {
+            color: #ffb019;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: clamp(5rem, 16vw, 11rem);
+            font-weight: 800;
+            letter-spacing: -0.08em;
+            text-shadow:
+              0 0 0.18rem #fff4c2,
+              0 0 1.3rem rgba(255, 172, 15, 0.8),
+              0 0 3.5rem rgba(255, 124, 0, 0.5);
+          }
+
+          .target {
+            color: #c7b6a1;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: clamp(4rem, 12vw, 8.4rem);
+            letter-spacing: -0.08em;
+            text-shadow: 0 0 1.2rem rgba(255, 226, 188, 0.24);
+          }
+
+          .bar {
+            position: relative;
+            height: clamp(3rem, 6vw, 4.4rem);
+            overflow: hidden;
+            border: 0.2rem solid rgba(151, 87, 35, 0.8);
+            border-radius: 999px;
+            background: rgba(12, 12, 10, 0.92);
+            box-shadow:
+              inset 0 0 1.2rem rgba(0, 0, 0, 0.9),
+              0 0 2.2rem rgba(255, 156, 8, 0.2);
+          }
+
+          .fill {
+            position: relative;
+            width: ${percentage}%;
+            min-width: 0.8rem;
+            height: 100%;
+            border-radius: inherit;
+            background:
+              radial-gradient(circle at 24% 35%, rgba(255, 244, 179, 0.7), transparent 0.13rem),
+              radial-gradient(circle at 48% 62%, rgba(255, 228, 132, 0.5), transparent 0.17rem),
+              radial-gradient(circle at 70% 38%, rgba(255, 238, 164, 0.46), transparent 0.14rem),
+              linear-gradient(180deg, #ffe17b 0%, #ffb21b 44%, #d26800 100%);
+            background-size: 4rem 4rem, 5rem 5rem, 4.5rem 4.5rem, 100% 100%;
+            box-shadow:
+              inset 0 0 1.4rem rgba(255, 255, 202, 0.4),
+              0 0 1.3rem rgba(255, 162, 0, 0.85),
+              0 0 3.5rem rgba(255, 123, 0, 0.5);
+          }
+
+          .fill::before {
+            position: absolute;
+            inset: 0.38rem 0.7rem auto;
+            height: 0.38rem;
+            content: '';
+            border-radius: 999px;
+            background: rgba(255, 255, 219, 0.75);
+            filter: blur(0.08rem);
+          }
+
+          .fill::after {
+            position: absolute;
+            top: -0.72rem;
+            right: -0.72rem;
+            width: 1.45rem;
+            height: 1.45rem;
+            content: '';
+            background: #fff1a3;
+            clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
+            filter: drop-shadow(0 0 0.9rem #ffb21b);
+          }
+
+          .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0;
+            margin-top: clamp(2.3rem, 5vw, 4.5rem);
+            padding-top: clamp(1.8rem, 4vw, 3rem);
+            border-top: 1px solid rgba(255, 244, 219, 0.15);
+          }
+
+          .stat {
+            display: grid;
+            justify-items: center;
+            gap: 0.7rem;
+            min-width: 0;
+            padding: 0 clamp(0.9rem, 3vw, 2.3rem);
+            text-align: center;
+          }
+
+          .stat + .stat {
+            border-left: 1px solid rgba(255, 191, 97, 0.22);
+          }
+
+          .icon {
+            position: relative;
+            width: clamp(3.6rem, 7vw, 5.2rem);
+            aspect-ratio: 1;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(255, 159, 31, 0.42);
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.22);
+            color: #ffa51f;
+            box-shadow: inset 0 0 1.3rem rgba(255, 153, 0, 0.07);
+          }
+
+          .icon svg {
+            width: 52%;
+            height: 52%;
+            stroke: currentColor;
+            stroke-width: 2.3;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+          }
+
+          .dot {
+            position: absolute;
+            right: 0.2rem;
+            bottom: 0.2rem;
+            width: 0.8rem;
+            height: 0.8rem;
+            border-radius: 50%;
+            background: #21d34d;
+            box-shadow: 0 0 0.9rem #21d34d;
+          }
+
+          .value {
+            color: #ffc64a;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: clamp(1.8rem, 4vw, 3rem);
+            font-weight: 700;
+            line-height: 1;
+          }
+
+          .label {
+            color: #b8aa98;
+            font-size: clamp(0.95rem, 2vw, 1.35rem);
+            line-height: 1.2;
+          }
+
+          .link {
+            color: inherit;
+            text-decoration: none;
+          }
+
+          @media (max-width: 720px) {
+            .frame {
+              border-radius: 0;
+              min-height: 100vh;
+            }
+
+            .profile {
+              margin-left: 0;
+              align-items: flex-start;
+            }
+
+            .card {
+              border-radius: 1.45rem;
+            }
+
+            .count {
+              gap: 0.65rem;
+            }
+
+            .stats {
+              grid-template-columns: 1fr;
+              gap: 1.6rem;
+            }
+
+            .stat + .stat {
+              padding-top: 1.6rem;
+              border-left: 0;
+              border-top: 1px solid rgba(255, 191, 97, 0.18);
+            }
+          }
+        </style>
+
+        <section class="frame" aria-labelledby="progress-title">
+          <header class="profile">
+            <a class="avatar link" href="https://untappd.com/user/${username}" aria-label="Open ${displayName} on Untappd">
+              ${avatarUrl ? `<img src="${avatarUrl}" alt="" />` : `<span>${initials}</span>`}
+            </a>
+            <div>
+              <h2 class="name">${displayName}</h2>
+              <p class="tagline">Beer explorer. Flavor chaser.</p>
+              <a class="badge link" href="https://untappd.com/user/${username}">
+                <span aria-hidden="true">🌾</span>
+                <span>Hoppy Explorer</span>
+              </a>
+            </div>
+          </header>
+
+          <article class="card">
+            <div class="ornament" aria-hidden="true">🌾</div>
+            <h1 id="progress-title">Road to ${formatter.format(target)} Unique Beers</h1>
+
+            <div class="count" aria-label="${formatter.format(current)} of ${formatter.format(target)} unique beers">
+              <span class="current">${formatter.format(current)}</span>
+              <span class="target">/ ${formatter.format(target)}</span>
+            </div>
+
+            <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${target}" aria-valuenow="${current}" aria-label="Unique beer progress">
+              <div class="fill"></div>
+            </div>
+
+            <div class="stats" aria-label="Progress summary">
+              <div class="stat">
+                <div class="icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 3v9h8"/><path d="M21 12a9 9 0 1 1-9-9"/></svg>
+                </div>
+                <div class="value">${percentage}%</div>
+                <div class="label">complete</div>
+              </div>
+
+              <div class="stat">
+                <div class="icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="m17 7 3-3"/><path d="M14 4h6v6"/></svg>
+                </div>
+                <div class="value">${formatter.format(remaining)}</div>
+                <div class="label">to go</div>
+              </div>
+
+              <div class="stat">
+                <div class="icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>
+                  ${isLive ? '<span class="dot"></span>' : ''}
+                </div>
+                <div class="value">${isLive ? 'Live data' : 'Demo data'}</div>
+                <div class="label">${updatedText}</div>
+              </div>
+            </div>
+          </article>
+        </section>
+      `;
+    }
+
+    #formatUpdatedAt(value) {
+      if (!value) return 'Updated automatically';
+
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return 'Updated automatically';
+
+      const diffMs = Date.now() - date.getTime();
+      if (diffMs >= 0 && diffMs < 60 * 60 * 1000) return 'Updated just now';
+
+      return `Updated ${date.toLocaleDateString('en-GB')}`;
+    }
+  }
+
+  if (!customElements.get('beer-progress-card')) {
+    customElements.define('beer-progress-card', BeerProgressCard);
+  }
+</script>
