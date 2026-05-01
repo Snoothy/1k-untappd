@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  background: #000;
+  background: #050402;
 }
 
 * {
@@ -9,19 +9,30 @@
 
 html,
 body {
+  min-width: 100%;
   min-height: 100%;
+  margin: 0;
+  background:
+    radial-gradient(circle at 20% 6%, rgba(255, 179, 37, 0.26), transparent 15rem),
+    radial-gradient(circle at 86% 43%, rgba(146, 77, 7, 0.34), transparent 24rem),
+    radial-gradient(circle at 70% 115%, rgba(255, 145, 0, 0.16), transparent 23rem),
+    linear-gradient(105deg, #050402 0%, #070604 44%, #010101 100%);
 }
 
 body {
-  margin: 0;
-  background:
-    radial-gradient(circle at 14% 8%, rgba(245, 158, 11, 0.16), transparent 20rem),
-    radial-gradient(circle at 92% 42%, rgba(180, 83, 9, 0.2), transparent 26rem),
-    #000;
+  min-height: 100vh;
+  min-height: 100svh;
+  overflow-x: hidden;
 }
 
 .site-shell {
+  width: 100%;
   min-height: 100vh;
-  display: grid;
-  place-items: center;
+  min-height: 100svh;
+  display: block;
+  background:
+    radial-gradient(circle at 20% 6%, rgba(255, 179, 37, 0.26), transparent 15rem),
+    radial-gradient(circle at 86% 43%, rgba(146, 77, 7, 0.34), transparent 24rem),
+    radial-gradient(circle at 70% 115%, rgba(255, 145, 0, 0.16), transparent 23rem),
+    linear-gradient(105deg, #050402 0%, #070604 44%, #010101 100%);
 }
