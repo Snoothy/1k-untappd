@@ -1,0 +1,23 @@
+---
+import ProgressBar from '../components/ProgressBar';
+import '../styles/global.css';
+
+const progress = {
+  current: 800,
+  target: 1000,
+};
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Road to 1,000 Untappd check-ins." />
+    <title>Road to 1k Untappd</title>
+  </head>
+  <body>
+    <main class="site-shell">
+      <ProgressBar current={progress.current} target={progress.target} />
+    </main>
+  </body>
+</html>
