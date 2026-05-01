@@ -1,5 +1,5 @@
 ---
-import ProgressBar from '../components/ProgressBar';
+import BeerProgress from '../components/BeerProgress.astro';
 import progress from '../data/progress.json';
 import '../styles/global.css';
 ---
@@ -8,12 +8,12 @@ import '../styles/global.css';
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Road to 1,000 Untappd check-ins." />
-    <title>Road to 1k Untappd</title>
+    <meta name="description" content="Road to 1,000 unique beers." />
+    <title>Road to 1,000 Unique Beers</title>
   </head>
   <body>
     <main class="site-shell">
-      <ProgressBar {...progress} />
+      <BeerProgress {...progress} />
     </main>
   </body>
 </html>
