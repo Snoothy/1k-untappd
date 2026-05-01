@@ -38,7 +38,7 @@ jobs:
           UNTAPPD_USERNAME: Snoothy
 
       - name: Build site
-        run: astro check && astro build
+        run: npx astro check && npx astro build
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
