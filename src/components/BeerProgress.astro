@@ -9,7 +9,10 @@ type Props = {
   updatedAt?: string;
 };
 
-const badgeImageUrl = '/964e85b057fc7f7c5447f0fb2b247b2e-fb_300x300.jpg';
+const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`;
+const badgeImageUrl = `${baseUrl}964e85b057fc7f7c5447f0fb2b247b2e-fb_300x300.jpg`;
 
 const {
   username,
@@ -37,10 +40,9 @@ const resolvedAvatarUrl = avatarUrl || badgeImageUrl;
 <script>
   class BeerProgressCard extends HTMLElement {
     connectedCallback(): void {
-      const badgeImageUrl = '/964e85b057fc7f7c5447f0fb2b247b2e-fb_300x300.jpg';
       const username = this.getAttribute('username') || 'Snoothy';
       const displayName = this.getAttribute('display-name') || username;
-      const avatarUrl = this.getAttribute('avatar-url') || badgeImageUrl;
+      const avatarUrl = this.getAttribute('avatar-url') || '';
       const current = Number(this.getAttribute('current') || 0);
       const target = Math.max(Number(this.getAttribute('target') || 1000), 1);
       const source = this.getAttribute('source') || 'fallback';
@@ -57,79 +59,37 @@ const resolvedAvatarUrl = avatarUrl || badgeImageUrl;
           :host {
             display: block;
             width: 100%;
-            min-height: 100vh;
-            min-height: 100svh;
+            min-height: 100dvh;
             color: #fff8e8;
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background:
-              radial-gradient(circle at 20% 6%, rgba(255, 179, 37, 0.26), transparent 15rem),
-              radial-gradient(circle at 86% 43%, rgba(146, 77, 7, 0.34), transparent 24rem),
-              radial-gradient(circle at 70% 115%, rgba(255, 145, 0, 0.16), transparent 23rem),
-              linear-gradient(105deg, #050402 0%, #070604 44%, #010101 100%);
           }
 
           * { box-sizing: border-box; }
 
           .frame {
-            position: relative;
-            width: 100%;
-            min-height: 100vh;
-            min-height: 100svh;
+            min-height: 100dvh;
             display: grid;
             place-items: center;
+            padding: clamp(0.5rem, 3vw, 3rem);
             overflow: hidden;
-            padding: clamp(1rem, 3vw, 3rem);
             background:
               radial-gradient(circle at 20% 6%, rgba(255, 179, 37, 0.26), transparent 15rem),
               radial-gradient(circle at 86% 43%, rgba(146, 77, 7, 0.34), transparent 24rem),
-              radial-gradient(circle at 70% 115%, rgba(255, 145, 0, 0.16), transparent 23rem),
               linear-gradient(105deg, #050402 0%, #070604 44%, #010101 100%);
-            isolation: isolate;
-          }
-
-          .frame::before,
-          .frame::after {
-            position: absolute;
-            content: '';
-            pointer-events: none;
-            z-index: -1;
-          }
-
-          .frame::before {
-            width: 34rem;
-            height: 34rem;
-            right: -11rem;
-            top: 18rem;
-            border-radius: 50%;
-            background:
-              radial-gradient(circle at 38% 32%, rgba(255, 208, 96, 0.5), transparent 0.15rem),
-              radial-gradient(circle at 58% 42%, rgba(255, 184, 45, 0.42), transparent 0.18rem),
-              radial-gradient(circle at 44% 68%, rgba(255, 194, 63, 0.28), transparent 0.16rem),
-              radial-gradient(circle at 57% 56%, rgba(147, 80, 10, 0.68), transparent 17rem);
-            background-size: 6rem 6rem, 5.2rem 5.2rem, 7rem 7rem, 100% 100%;
-            opacity: 0.78;
-          }
-
-          .frame::after {
-            inset: 0;
-            background-image: radial-gradient(circle, rgba(255, 199, 78, 0.25) 0 1px, transparent 1.25px);
-            background-size: 5.25rem 5.25rem;
-            mask-image: linear-gradient(90deg, transparent, black 48%, transparent 92%);
-            opacity: 0.16;
           }
 
           .content {
             width: min(100%, 58rem);
             display: flex;
             flex-direction: column;
-            gap: clamp(1.6rem, 4vw, 3.5rem);
+            gap: clamp(1.5rem, 4vw, 3.5rem);
           }
 
           .profile {
             display: grid;
             grid-template-columns: auto 1fr;
             align-items: center;
-            gap: clamp(1.2rem, 3vw, 2.5rem);
+            gap: clamp(1rem, 3vw, 2.5rem);
           }
 
           .avatar {
@@ -140,7 +100,7 @@ const resolvedAvatarUrl = avatarUrl || badgeImageUrl;
             border: clamp(0.24rem, 0.7vw, 0.4rem) solid #ffbd3f;
             border-radius: 50%;
             background: #090807;
-            box-shadow: 0 0 0 0.75rem rgba(255, 169, 20, 0.1), 0 0 3rem rgba(255, 168, 17, 0.6), inset 0 0 3rem rgba(0, 0, 0, 0.62);
+            box-shadow: 0 0 0 0.75rem rgba(255, 169, 20, 0.1), 0 0 3rem rgba(255, 168, 17, 0.6);
           }
 
           .avatar img {
@@ -177,37 +137,18 @@ const resolvedAvatarUrl = avatarUrl || badgeImageUrl;
             color: #fff8ed;
             font-size: clamp(0.95rem, 2.2vw, 1.6rem);
             font-weight: 900;
-            box-shadow: inset 0 0 1.5rem rgba(255, 157, 0, 0.07);
+            text-decoration: none;
           }
 
           .card {
-            position: relative;
-            z-index: 0;
             overflow: hidden;
             padding: clamp(2.5rem, 6vw, 5.5rem) clamp(1.5rem, 4vw, 3.5rem) clamp(2rem, 4vw, 4rem);
             border: 1px solid rgba(179, 98, 42, 0.62);
             border-radius: clamp(1.5rem, 3vw, 3rem);
             background:
-              linear-gradient(90deg, rgba(255, 169, 24, 0) 0 66%, rgba(151, 91, 14, 0.44) 66% 100%),
               radial-gradient(circle at 86% 22%, rgba(255, 188, 55, 0.13), transparent 18rem),
               linear-gradient(145deg, rgba(10, 9, 6, 0.96), rgba(5, 4, 3, 0.98));
             box-shadow: 0 1rem 4rem rgba(0, 0, 0, 0.64), inset 0 0 4.5rem rgba(255, 170, 31, 0.035);
-          }
-
-          .card::after {
-            position: absolute;
-            inset: 0 0 auto auto;
-            width: 43%;
-            height: 100%;
-            content: '';
-            background:
-              radial-gradient(circle at 25% 8%, rgba(255, 205, 89, 0.32), transparent 0.14rem),
-              radial-gradient(circle at 63% 25%, rgba(255, 190, 48, 0.25), transparent 0.18rem),
-              radial-gradient(circle at 43% 50%, rgba(255, 201, 74, 0.2), transparent 0.13rem),
-              radial-gradient(circle at 74% 72%, rgba(255, 174, 31, 0.18), transparent 0.16rem);
-            background-size: 5rem 5rem, 6rem 6rem, 4.8rem 4.8rem, 5.4rem 5.4rem;
-            opacity: 0.6;
-            pointer-events: none;
           }
 
           .ornament {
@@ -264,7 +205,6 @@ const resolvedAvatarUrl = avatarUrl || badgeImageUrl;
           }
 
           .bar {
-            position: relative;
             height: clamp(2.9rem, 6vw, 5.2rem);
             overflow: hidden;
             border: 0.3rem solid rgba(120, 62, 30, 0.95);
@@ -279,34 +219,8 @@ const resolvedAvatarUrl = avatarUrl || badgeImageUrl;
             min-width: 1rem;
             height: 100%;
             border-radius: inherit;
-            background:
-              radial-gradient(circle at 12% 58%, rgba(255, 239, 161, 0.9), transparent 0.14rem),
-              radial-gradient(circle at 46% 55%, rgba(255, 238, 164, 0.62), transparent 0.18rem),
-              linear-gradient(180deg, #ffe878 0%, #ffb529 44%, #e57909 100%);
-            background-size: 6rem 6rem, 5rem 5rem, 100% 100%;
+            background: linear-gradient(180deg, #ffe878 0%, #ffb529 44%, #e57909 100%);
             box-shadow: inset 0 0 1.3rem rgba(255, 255, 202, 0.42), 0 0 1.5rem rgba(255, 162, 0, 0.86), 0 0 3.5rem rgba(255, 123, 0, 0.56);
-          }
-
-          .fill::before {
-            position: absolute;
-            inset: 0.6rem 1.2rem auto;
-            height: 0.38rem;
-            content: '';
-            border-radius: 999px;
-            background: rgba(255, 255, 219, 0.84);
-            filter: blur(0.08rem);
-          }
-
-          .fill::after {
-            position: absolute;
-            top: -0.55rem;
-            right: -0.75rem;
-            width: 1.6rem;
-            height: 1.6rem;
-            content: '';
-            background: #fff4b8;
-            clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
-            filter: drop-shadow(0 0 0.95rem #ffb21b);
           }
 
           .stats {
@@ -326,54 +240,19 @@ const resolvedAvatarUrl = avatarUrl || badgeImageUrl;
           }
 
           .stat + .stat { border-left: 1px solid rgba(255, 191, 97, 0.2); }
-
-          .icon {
-            position: relative;
-            width: clamp(3.2rem, 6vw, 5rem);
-            aspect-ratio: 1;
-            display: grid;
-            place-items: center;
-            border: 1px solid rgba(168, 90, 37, 0.72);
-            border-radius: 50%;
-            background: rgba(0, 0, 0, 0.24);
-            color: #ffa51f;
-          }
-
-          .icon svg { width: 52%; height: 52%; stroke: currentColor; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-
-          .dot {
-            position: absolute;
-            right: 0.35rem;
-            bottom: 0.35rem;
-            width: 0.72rem;
-            height: 0.72rem;
-            border-radius: 50%;
-            background: #21d34d;
-            box-shadow: 0 0 0.9rem #21d34d;
-          }
-
           .value { color: #ffc64a; font: 800 clamp(1.55rem, 3.6vw, 2.8rem) Georgia, 'Times New Roman', serif; line-height: 1; }
           .label { color: #b8aa98; font-size: clamp(0.82rem, 1.8vw, 1.25rem); line-height: 1.15; }
           .link { color: inherit; text-decoration: none; }
 
           @media (max-width: 720px) {
-            :host {
-              min-height: 100dvh;
-              background: transparent;
-            }
-
             .frame {
-              height: 100dvh;
               min-height: 100dvh;
-              max-height: 100dvh;
               padding: 0.5rem;
-              align-items: stretch;
             }
 
             .content {
               width: min(100%, 27rem);
-              height: calc(100dvh - 1rem);
-              max-height: calc(100dvh - 1rem);
+              min-height: calc(100dvh - 1rem);
               gap: 0.5rem;
               justify-content: center;
             }
@@ -381,7 +260,6 @@ const resolvedAvatarUrl = avatarUrl || badgeImageUrl;
             .profile {
               gap: 0.6rem;
               grid-template-columns: auto minmax(0, 1fr);
-              flex: 0 0 auto;
             }
 
             .avatar {
@@ -393,77 +271,30 @@ const resolvedAvatarUrl = avatarUrl || badgeImageUrl;
             .name { font-size: clamp(1.85rem, 9vw, 2.55rem); line-height: 0.86; }
             .tagline { margin: 0.14rem 0 0.3rem; font-size: clamp(0.68rem, 3vw, 0.84rem); }
             .badge { gap: 0.35rem; padding: 0.3rem 0.7rem; font-size: 0.7rem; }
-
-            .card {
-              padding: 0.7rem 0.7rem 0.62rem;
-              border-radius: 1.08rem;
-              flex: 0 1 auto;
-            }
-
+            .card { padding: 0.7rem 0.7rem 0.62rem; border-radius: 1.08rem; }
             .ornament { gap: 0.7rem; margin-bottom: 0.35rem; font-size: 0.75rem; }
             .ornament::before, .ornament::after { width: 1.65rem; }
-
-            h1 {
-              max-width: 12.5ch;
-              margin-bottom: 0.48rem;
-              font-size: clamp(1.9rem, 10.5vw, 2.85rem);
-              line-height: 0.84;
-            }
-
+            h1 { margin-bottom: 0.48rem; font-size: clamp(1.9rem, 10.5vw, 2.85rem); line-height: 0.84; }
             .count { gap: 0.32rem; margin-bottom: 0.55rem; }
             .current { font-size: clamp(2.95rem, 16.5vw, 4.15rem); }
             .target { font-size: clamp(2.15rem, 11.5vw, 3.15rem); }
             .bar { height: clamp(1.65rem, 7.5vw, 2.25rem); border-width: 0.18rem; }
-            .fill::before { inset: 0.28rem 0.65rem auto; height: 0.2rem; }
-            .fill::after { width: 0.85rem; height: 0.85rem; top: -0.26rem; right: -0.4rem; }
-
-            .stats {
-              grid-template-columns: repeat(3, minmax(0, 1fr));
-              gap: 0;
-              margin-top: 0.52rem;
-              padding-top: 0.48rem;
-            }
-
+            .stats { margin-top: 0.52rem; padding-top: 0.48rem; }
             .stat { gap: 0.18rem; padding: 0 0.22rem; }
-            .stat + .stat { border-left: 1px solid rgba(255, 191, 97, 0.18); }
-            .icon { width: clamp(1.55rem, 7vw, 2.05rem); }
             .value { font-size: clamp(0.95rem, 4.6vw, 1.28rem); }
             .label { font-size: clamp(0.5rem, 2.35vw, 0.68rem); }
           }
 
-          @media (max-width: 380px), (max-height: 700px) {
-            .frame { padding: 0.35rem; }
-            .content { height: calc(100dvh - 0.7rem); max-height: calc(100dvh - 0.7rem); gap: 0.3rem; }
-            .avatar { width: 3.25rem; }
-            .name { font-size: 1.88rem; }
-            .tagline { display: none; }
-            .badge { padding: 0.25rem 0.56rem; font-size: 0.62rem; }
-            .card { padding: 0.52rem 0.54rem 0.48rem; }
+          @media (max-height: 700px) {
+            .tagline,
             .ornament { display: none; }
+            .content { gap: 0.3rem; }
+            .card { padding: 0.52rem 0.54rem 0.48rem; }
             h1 { font-size: 1.96rem; margin-bottom: 0.4rem; }
             .current { font-size: 2.98rem; }
             .target { font-size: 2.22rem; }
             .bar { height: 1.55rem; }
             .stats { margin-top: 0.42rem; padding-top: 0.38rem; }
-            .icon { width: 1.52rem; }
-            .value { font-size: 0.95rem; }
-            .label { font-size: 0.5rem; }
-          }
-
-          @media (max-height: 620px) {
-            .tagline,
-            .ornament,
-            .icon { display: none; }
-            .content { gap: 0.22rem; }
-            .avatar { width: 2.8rem; }
-            .badge { padding: 0.2rem 0.48rem; font-size: 0.56rem; }
-            .card { padding: 0.42rem; }
-            h1 { font-size: 1.65rem; margin-bottom: 0.26rem; }
-            .current { font-size: 2.45rem; }
-            .target { font-size: 1.82rem; }
-            .count { margin-bottom: 0.32rem; }
-            .bar { height: 1.15rem; }
-            .stats { margin-top: 0.28rem; padding-top: 0.28rem; }
           }
         </style>
 
@@ -486,32 +317,17 @@ const resolvedAvatarUrl = avatarUrl || badgeImageUrl;
             <article class="card">
               <div class="ornament" aria-hidden="true">🌾</div>
               <h1 id="progress-title">Road to ${formatter.format(target)} Unique Beers</h1>
-
               <div class="count" aria-label="${formatter.format(current)} of ${formatter.format(target)} unique beers">
                 <span class="current">${formatter.format(current)}</span>
                 <span class="target">/ ${formatter.format(target)}</span>
               </div>
-
               <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${target}" aria-valuenow="${current}" aria-label="Unique beer progress">
                 <div class="fill"></div>
               </div>
-
               <div class="stats" aria-label="Progress summary">
-                <div class="stat">
-                  <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v9h8"/><path d="M21 12a9 9 0 1 1-9-9"/></svg></div>
-                  <div class="value">${percentage}%</div>
-                  <div class="label">complete</div>
-                </div>
-                <div class="stat">
-                  <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="m17 7 3-3"/><path d="M14 4h6v6"/></svg></div>
-                  <div class="value">${formatter.format(remaining)}</div>
-                  <div class="label">to go</div>
-                </div>
-                <div class="stat">
-                  <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>${isLive ? '<span class="dot"></span>' : ''}</div>
-                  <div class="value">${isLive ? 'Live' : 'Demo'}</div>
-                  <div class="label">${updatedText}</div>
-                </div>
+                <div class="stat"><div class="value">${percentage}%</div><div class="label">complete</div></div>
+                <div class="stat"><div class="value">${formatter.format(remaining)}</div><div class="label">to go</div></div>
+                <div class="stat"><div class="value">${isLive ? 'Live' : 'Demo'}</div><div class="label">${updatedText}</div></div>
               </div>
             </article>
           </div>
@@ -521,13 +337,10 @@ const resolvedAvatarUrl = avatarUrl || badgeImageUrl;
 
     private formatUpdatedAt(value: string): string {
       if (!value) return 'Updated automatically';
-
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return 'Updated automatically';
-
       const diffMs = Date.now() - date.getTime();
       if (diffMs >= 0 && diffMs < 60 * 60 * 1000) return 'Updated just now';
-
       return `Updated ${date.toLocaleDateString('en-GB')}`;
     }
   }
