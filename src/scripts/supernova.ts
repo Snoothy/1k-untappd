@@ -5,7 +5,12 @@ import {
   progressView,
   type ProgressSnapshot,
 } from "../lib/progress";
-import { createSupernovaRenderer } from "./supernova-renderer";
+import {
+  createSupernovaRenderer,
+  INCREMENT_IMPACT,
+  INCREMENT_DURATION,
+  type CounterIncrement,
+} from "./supernova-renderer";
 import { startProgressPolling, type ConnectionState } from "../lib/live-progress";
 
 export function mountSupernova(root: HTMLElement): void {
@@ -52,8 +57,11 @@ export function mountSupernova(root: HTMLElement): void {
     preview: false,
     count: progress.current,
     flare: null as number | null,
+    increment: null as CounterIncrement | null,
+    impactPoint: null as [number, number] | null,
     dirty: true,
   };
+  let pendingIncrement: { value: number; committed: boolean } | null = null;
   let frameId = 0,
     last = performance.now(),
     accumulator = 0,
@@ -119,6 +127,10 @@ export function mountSupernova(root: HTMLElement): void {
     invalidate();
   }
   function syncPause() {
+    if (state.paused && pendingIncrement) {
+      cancelIncrement();
+      applyLiveCount(progress.current);
+    }
     root.classList.toggle("sn-paused", state.paused);
     last = performance.now();
     accumulator = 0;
@@ -134,7 +146,26 @@ export function mountSupernova(root: HTMLElement): void {
     announcement.textContent = "Solar flare.";
     invalidate();
   }
+  function cancelIncrement() {
+    pendingIncrement = null;
+    state.increment = null;
+  }
+  function applyLiveCount(value: number) {
+    const previous = state.count;
+    setCount(value);
+    if (value > previous && isConfirmed(progress)) {
+      const crossedGoal = previous < progress.target && value >= progress.target;
+      if (crossedGoal) state.finale = state.paused || !renderer ? 11 : 8.5;
+      announcement.textContent = `${progressView(progress, value).description}.${crossedGoal ? " Legend unlocked." : ""}`;
+    }
+  }
+  function startIncrement(value: number) {
+    state.increment = { age: 0, angle: -0.55 + state.time * 0.072 };
+    pendingIncrement = { value, committed: false };
+    invalidate();
+  }
   function finale() {
+    cancelIncrement();
     if (state.preview) {
       state.preview = false;
       state.finale = null;
@@ -191,6 +222,24 @@ export function mountSupernova(root: HTMLElement): void {
               if (next >= progress.target)
                 announcement.textContent = `${progressView(progress, next).current} unique beers. Legend unlocked.`;
             }
+            // The preview's existing beats use the same flight and impact as live data.
+            const beat = [8.5, 5, 2.5].find(at => state.finale! >= at - INCREMENT_IMPACT);
+            const age = beat === undefined ? INCREMENT_DURATION : state.finale - beat + INCREMENT_IMPACT;
+            state.increment = age < INCREMENT_DURATION && beat !== undefined
+              ? { age, angle: -0.55 + (state.time - age) * 0.072 }
+              : null;
+          }
+        }
+        if (!state.preview && state.increment) {
+          state.increment.age += accumulator;
+          if (pendingIncrement && !pendingIncrement.committed && state.increment.age >= INCREMENT_IMPACT) {
+            // Data, pulse and explosion are committed together on this animation frame.
+            pendingIncrement.committed = true;
+            applyLiveCount(pendingIncrement.value);
+          }
+          if (state.increment.age >= INCREMENT_DURATION) {
+            cancelIncrement();
+            if (progress.current > state.count) startIncrement(progress.current);
           }
         }
       }
@@ -200,6 +249,17 @@ export function mountSupernova(root: HTMLElement): void {
           ? Math.exp(-(state.finale - 8.5) * 0.85)
           : 0;
       core.style.transform = `scale(${(1 + hit * 0.035).toFixed(4)})`;
+      const age = state.increment?.age;
+      const impactAge = age === undefined ? -1 : age - INCREMENT_IMPACT;
+      const pulse = impactAge >= 0
+        ? Math.exp(-impactAge * 3.2) * (0.84 + 0.16 * Math.cos(impactAge * 18)) : 0;
+      const anticipation = age !== undefined && impactAge < 0
+        ? Math.max(0, (age - 1.65) / (INCREMENT_IMPACT - 1.65)) : 0;
+      count.style.setProperty("--sn-count-scale", (1 + pulse * 0.145 - anticipation * 0.025).toFixed(4));
+      count.style.setProperty("--sn-count-heat", (1 + pulse * 0.85 + anticipation * 0.1).toFixed(3));
+      count.style.setProperty("--sn-count-glow", `${22 + pulse * 42}px`);
+      if (age === undefined) delete root.dataset.incrementPhase;
+      else root.dataset.incrementPhase = age < 0.94 ? "outbound" : impactAge < 0 ? "return" : "impact";
       state.dirty = false;
       accumulator = 0;
     }
@@ -210,25 +270,33 @@ export function mountSupernova(root: HTMLElement): void {
     snapshotUrl: root.dataset.progressUrl!,
     getCurrent: () => progress,
     onProgress(next) {
-      const crossedGoal = progress.current < progress.target &&
-        next.current >= next.target && isConfirmed(next);
+      const previous = progress;
       progress = next;
       if (!state.preview) {
-        setCount(next.current);
-        if (crossedGoal) {
-          state.finale = state.paused ? 11 : 8.5;
-          announcement.textContent = `${progressView(next).current} unique beers. Legend unlocked.`;
-          invalidate();
+        if (!isConfirmed(previous) || !isConfirmed(next) || next.current < previous.current ||
+          state.paused || reduced.matches || !renderer) {
+          cancelIncrement();
+          applyLiveCount(next.current);
+        } else if (next.current > state.count) {
+          if (!state.increment) startIncrement(next.current);
+          // Coalesce a newer snapshot during flight; never count invented intermediate beers.
+          else if (pendingIncrement && !pendingIncrement.committed) pendingIncrement.value = next.current;
+          setCount(state.count);
+        } else {
+          setCount(state.count);
         }
       }
     },
     onConnection(next) {
       connection = next;
-      if (!state.preview) setCount(progress.current);
+      // Status updates must not reveal the pending number before the star hits.
+      if (!state.preview) setCount(state.count);
     },
   });
   const observer = new ResizeObserver(() => {
     const rect = stage.getBoundingClientRect();
+    const number = count.getBoundingClientRect();
+    state.impactPoint = [number.left - rect.left + number.width / 2, number.top - rect.top + number.height / 2];
     renderer?.resize(rect.width, rect.height);
     invalidate();
   });

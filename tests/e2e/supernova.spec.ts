@@ -162,6 +162,69 @@ test("backs off after failures and pauses while offline or hidden", async ({ pag
   await expect.poll(() => requests).toBe(beforeHidden + 1);
 });
 
+test("a live increment flies out, returns, and changes the number on impact", async ({ page }) => {
+  let response = { ...data, current: 999, updatedAt: "2026-10-05T18:30:00Z" };
+  await page.unroute(liveUrl);
+  await page.route(liveUrl, route => route.fulfill({ json: response }));
+  await page.clock.install({ time: new Date("2026-10-05T18:29:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-05T18:30:00Z"));
+  await loaded(page);
+  await page.clock.runFor(100);
+  await expect(page.locator(".sn-count")).toHaveText("999");
+  response = { ...response, current: 1000, updatedAt: "2026-10-05T18:30:30Z" };
+  const incoming = page.waitForResponse(liveUrl);
+  await page.clock.fastForward(30_100);
+  await incoming;
+  await page.clock.runFor(100);
+  await expect(page.locator("#supernova")).toHaveAttribute("data-increment-phase", "outbound");
+  await page.clock.runFor(450);
+  await expect(page.locator(".sn-count")).toHaveText("999");
+  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "999");
+  await page.screenshot({ path: "test-results/increment-launch.png" });
+  await page.clock.runFor(800);
+  await expect(page.locator("#supernova")).toHaveAttribute("data-increment-phase", "return");
+  await expect(page.locator(".sn-count")).toHaveText("999");
+  await page.screenshot({ path: "test-results/increment-return.png" });
+  await page.clock.runFor(950);
+  await expect(page.locator(".sn-count")).toHaveText("1,000");
+  await expect(page.locator("#supernova")).toHaveAttribute("data-increment-phase", "impact");
+  await expect(page.locator("#supernova")).toHaveClass(/sn-completed/);
+  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1000");
+  expect(await page.locator(".sn-count").evaluate(el => Number(getComputedStyle(el).getPropertyValue("--sn-count-scale")))).toBeGreaterThan(1.05);
+  await page.screenshot({ path: "test-results/increment-impact.png" });
+  await page.clock.runFor(3000);
+  await expect(page.locator("#supernova")).not.toHaveAttribute("data-increment-phase");
+  await page.clock.fastForward(30_100);
+  await expect(page.locator(".sn-count")).toHaveText("1,000");
+  await expect(page.locator("#supernova")).not.toHaveAttribute("data-increment-phase");
+});
+
+test("pausing a star in flight settles immediately on the confirmed count", async ({ page }) => {
+  let response = { ...data, current: 987, updatedAt: "2026-10-05T18:30:00Z" };
+  await page.unroute(liveUrl);
+  await page.route(liveUrl, route => route.fulfill({ json: response }));
+  await page.clock.install({ time: new Date("2026-10-05T18:29:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-05T18:30:00Z"));
+  await loaded(page);
+  await page.clock.runFor(100);
+  await expect(page.locator(".sn-count")).toHaveText("987");
+  response = { ...response, current: 988, updatedAt: "2026-10-05T18:30:30Z" };
+  const incoming = page.waitForResponse(liveUrl);
+  await page.clock.fastForward(30_100);
+  await incoming;
+  await page.clock.runFor(100);
+  await expect(page.locator("#supernova")).toHaveAttribute("data-increment-phase", "outbound");
+  await expect(page.locator(".sn-count")).toHaveText("987");
+  await page.keyboard.press("p");
+  await page.clock.runFor(50);
+  await expect(page.locator(".sn-count")).toHaveText("988");
+  await expect(page.locator("#supernova")).not.toHaveAttribute("data-increment-phase");
+  await page.keyboard.press("p");
+  await page.clock.runFor(3000);
+  await expect(page.locator(".sn-count")).toHaveText("988");
+  await expect(page.locator("#supernova")).not.toHaveAttribute("data-increment-phase");
+});
+
 test("fits a mobile screen and honors reduced motion", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await page.emulateMedia({ reducedMotion: "reduce" });

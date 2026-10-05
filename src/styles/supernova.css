@@ -179,7 +179,9 @@
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 22px #ffa32d50);
+  transform: scale(var(--sn-count-scale, 1));
+  transform-origin: 50% 50%;
+  filter: brightness(var(--sn-count-heat, 1)) drop-shadow(0 0 var(--sn-count-glow, 22px) #ffa32d50);
   animation: sn-gold 9s ease-in-out infinite;
 }
 #supernova .sn-unit {
@@ -262,7 +264,7 @@
     #ffe19e 64%,
     #ffcd66 85%
   );
-  filter: drop-shadow(0 0 34px #ffc25280);
+  filter: brightness(var(--sn-count-heat, 1)) drop-shadow(0 0 var(--sn-count-glow, 34px) #ffc25280);
 }
 @keyframes sn-gold {
   0%,

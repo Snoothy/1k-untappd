@@ -21,6 +21,10 @@ The production page fills the screen without a control footer. Use the keyboard 
 
 A preview is explicitly labelled **FINALE PREVIEW**. It does not modify data. Leaving the preview restores the most recently received real snapshot, including counts above the goal.
 
+Each confirmed increase launches a bright star from the solar corona. It curves outward, leaves a gold-and-white trail, then accelerates into the middle of the counter. The number advances on impact, with a white-hot pulse, expanding shockwaves and a shower of sparks. Reaching the goal starts the full finale at that same impact. Press **Space** to see the sequence in the finale preview.
+
+The flight lasts 2.2 seconds. New snapshots received in flight are combined into the latest confirmed value; identical readings never replay it. Corrections and recovery from demo data apply directly. Paused or reduced-motion displays update immediately, and pausing in flight settles on the latest real count.
+
 ## Progress data
 
 `npm run fetch:untappd` scrapes the public Untappd profile’s **Unique** count and writes `src/data/progress.json`. Set `UNTAPPD_USERNAME` to change the profile; it defaults to `Snoothy`. No API credentials are required.
