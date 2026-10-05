@@ -62,6 +62,8 @@ export function mountSupernova(root: HTMLElement): void {
     dirty: true,
   };
   let pendingIncrement: { value: number; committed: boolean } | null = null;
+  let replayRequested = false;
+  let counterTaps = 0;
   let frameId = 0,
     last = performance.now(),
     accumulator = 0,
@@ -79,7 +81,7 @@ export function mountSupernova(root: HTMLElement): void {
     state.count = value;
     const view = progressView(progress, value);
     count.textContent = view.current;
-    count.setAttribute("aria-label", view.description);
+    count.setAttribute("aria-label", `${view.description}. Activate 10 times to replay the starburst.`);
     fill.style.width = `${view.percentage}%`;
     track.setAttribute("aria-valuemax", String(progress.target));
     track.setAttribute("aria-valuenow", String(view.progressValue));
@@ -134,6 +136,7 @@ export function mountSupernova(root: HTMLElement): void {
     root.classList.toggle("sn-paused", state.paused);
     last = performance.now();
     accumulator = 0;
+    if (!state.paused) startQueuedReplay();
     invalidate();
   }
   function pause() {
@@ -164,6 +167,14 @@ export function mountSupernova(root: HTMLElement): void {
     pendingIncrement = { value, committed: false };
     invalidate();
   }
+  function startQueuedReplay() {
+    if (!replayRequested || state.increment || state.preview || state.paused || reduced.matches || !renderer) return;
+    replayRequested = false;
+    // A visual-only burst has no pending value to commit at impact.
+    state.increment = { age: 0, angle: -0.55 + state.time * 0.072 };
+    announcement.textContent = `Starburst replay. Progress stays at ${progressView(progress, state.count).current} unique beers.`;
+    invalidate();
+  }
   function finale() {
     cancelIncrement();
     if (state.preview) {
@@ -172,6 +183,7 @@ export function mountSupernova(root: HTMLElement): void {
       state.flare = null;
       setCount(progress.current);
       announcement.textContent = `Returned to progress: ${progressView(progress).description}.`;
+      startQueuedReplay();
     } else {
       state.preview = true;
       state.finale = state.paused || !renderer ? 11 : 0;
@@ -240,6 +252,7 @@ export function mountSupernova(root: HTMLElement): void {
           if (state.increment.age >= INCREMENT_DURATION) {
             cancelIncrement();
             if (progress.current > state.count) startIncrement(progress.current);
+            else startQueuedReplay();
           }
         }
       }
@@ -301,6 +314,13 @@ export function mountSupernova(root: HTMLElement): void {
     invalidate();
   });
   observer.observe(stage);
+  count.addEventListener("click", () => {
+    counterTaps++;
+    if (counterTaps < 10) return;
+    counterTaps = 0;
+    replayRequested = true;
+    startQueuedReplay();
+  }, options);
   reduced.addEventListener(
     "change",
     () => {
@@ -321,14 +341,17 @@ export function mountSupernova(root: HTMLElement): void {
       )
         return;
       const target = event.target;
+      const onCounter = target instanceof Node && count.contains(target);
       if (
         target instanceof Element &&
         target.closest(
           'input,textarea,select,[contenteditable="true"],button,a',
-        ) &&
+        ) && !onCounter &&
         document.fullscreenElement !== root
       )
         return;
+      // Space activates the focused counter button; other projector keys still work.
+      if (onCounter && event.code === "Space") return;
       const key = event.key.toLowerCase();
       if (key === "f") {
         event.preventDefault();

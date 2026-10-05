@@ -225,6 +225,44 @@ test("pausing a star in flight settles immediately on the confirmed count", asyn
   await expect(page.locator("#supernova")).not.toHaveAttribute("data-increment-phase");
 });
 
+test("ten touch taps replay the burst without changing progress and reset the tap counter", async ({ browser }) => {
+  const context = await browser.newContext({
+    hasTouch: true, viewport: { width: 390, height: 844 }, baseURL: "http://127.0.0.1:4321",
+  });
+  const page = await context.newPage();
+  await page.route(liveUrl, route => route.fulfill({ json: { ...data, current: 999, updatedAt: "2026-10-05T18:30:00Z" } }));
+  await page.clock.install({ time: new Date("2026-10-05T18:29:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-05T18:30:00Z"));
+  await loaded(page);
+  await page.clock.runFor(100);
+  const counter = page.locator(".sn-count"), root = page.locator("#supernova");
+  await expect(counter).toHaveText("999");
+  for (let i = 0; i < 9; i++) await counter.tap();
+  await page.clock.runFor(100);
+  await expect(root).not.toHaveAttribute("data-increment-phase");
+  await counter.tap();
+  await page.clock.runFor(100);
+  await expect(root).toHaveAttribute("data-increment-phase", "outbound");
+  await expect(counter).toHaveText("999");
+  await page.clock.runFor(2200);
+  await expect(root).toHaveAttribute("data-increment-phase", "impact");
+  await expect(counter).toHaveText("999");
+  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "999");
+  await expect(root).not.toHaveClass(/sn-completed/);
+  await expect(page.locator(".sn-demo")).toHaveText("LIVE UPDATES");
+  expect(await counter.evaluate(el => Number(getComputedStyle(el).getPropertyValue("--sn-count-scale")))).toBeGreaterThan(1.05);
+  await page.screenshot({ path: "test-results/increment-replay-mobile.png" });
+  await page.clock.runFor(2600);
+  for (let i = 0; i < 9; i++) await counter.tap();
+  await page.clock.runFor(100);
+  await expect(root).not.toHaveAttribute("data-increment-phase");
+  await counter.tap();
+  await page.clock.runFor(100);
+  await expect(root).toHaveAttribute("data-increment-phase", "outbound");
+  await expect(counter).toHaveText("999");
+  await context.close();
+});
+
 test("fits a mobile screen and honors reduced motion", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await page.emulateMedia({ reducedMotion: "reduce" });

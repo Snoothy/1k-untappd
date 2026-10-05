@@ -43,7 +43,7 @@ const baseUrl = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/`;
     </div>
     <div class="sn-core">
       <p class="sn-eyebrow">{view.complete ? "A LEGEND IS BORN." : "THE JOURNEY SO FAR"}</p>
-      <div class="sn-count" aria-label={view.description}>{view.current}</div>
+      <button type="button" class="sn-count" aria-label={`${view.description}. Activate 10 times to replay the starburst.`} title="Tap 10 times to replay the starburst">{view.current}</button>
       <p class="sn-unit">{view.complete ? `${view.target} UNIQUE BEERS REACHED` : `OF ${view.target} UNIQUE BEERS`}</p>
     </div>
     <footer class="sn-progress">
