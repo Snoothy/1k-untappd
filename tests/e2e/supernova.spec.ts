@@ -122,7 +122,10 @@ test("backs off after failures and pauses while offline or hidden", async ({ pag
   await page.route(liveUrl, route => {
     requests++;
     return fail
-      ? route.fulfill({status: 429, headers: {"Retry-After": "120"}, json: {error: "retry later"}})
+      ? route.fulfill({status: 429, headers: {
+        "Retry-After": "120",
+        "Access-Control-Expose-Headers": "Retry-After",
+      }, json: {error: "retry later"}})
       : route.fulfill({json: {...data, updatedAt: "2026-10-05T18:30:00Z"}});
   });
   await page.emulateMedia({reducedMotion: "reduce"});
@@ -134,6 +137,7 @@ test("backs off after failures and pauses while offline or hidden", async ({ pag
   await expect(page.locator(".sn-demo")).toHaveText("RECONNECTING");
   const afterFailure = requests;
   await page.clock.fastForward(60_000);
+  await page.clock.runFor(50);
   expect(requests).toBe(afterFailure);
   await page.clock.fastForward(61_000);
   await expect.poll(() => requests).toBe(afterFailure + 1);
@@ -160,6 +164,107 @@ test("backs off after failures and pauses while offline or hidden", async ({ pag
     document.dispatchEvent(new Event("visibilitychange"));
   });
   await expect.poll(() => requests).toBe(beforeHidden + 1);
+});
+
+test("a live increment flies out, returns, and changes the number on impact", async ({ page }) => {
+  let response = { ...data, current: 999, updatedAt: "2026-10-05T18:30:00Z" };
+  await page.unroute(liveUrl);
+  await page.route(liveUrl, route => route.fulfill({ json: response }));
+  await page.clock.install({ time: new Date("2026-10-05T18:29:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-05T18:30:00Z"));
+  await loaded(page);
+  await page.clock.runFor(100);
+  await expect(page.locator(".sn-count")).toHaveText("999");
+  response = { ...response, current: 1000, updatedAt: "2026-10-05T18:30:30Z" };
+  const incoming = page.waitForResponse(liveUrl);
+  await page.clock.fastForward(30_100);
+  await incoming;
+  await page.clock.runFor(100);
+  await expect(page.locator("#supernova")).toHaveAttribute("data-increment-phase", "outbound");
+  await page.clock.runFor(450);
+  await expect(page.locator(".sn-count")).toHaveText("999");
+  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "999");
+  await page.screenshot({ path: "test-results/increment-launch.png" });
+  await page.clock.runFor(800);
+  await expect(page.locator("#supernova")).toHaveAttribute("data-increment-phase", "return");
+  await expect(page.locator(".sn-count")).toHaveText("999");
+  await page.screenshot({ path: "test-results/increment-return.png" });
+  await page.clock.runFor(950);
+  await expect(page.locator(".sn-count")).toHaveText("1,000");
+  await expect(page.locator("#supernova")).toHaveAttribute("data-increment-phase", "impact");
+  await expect(page.locator("#supernova")).toHaveClass(/sn-completed/);
+  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1000");
+  expect(await page.locator(".sn-count").evaluate(el => Number(getComputedStyle(el).getPropertyValue("--sn-count-scale")))).toBeGreaterThan(1.05);
+  await page.screenshot({ path: "test-results/increment-impact.png" });
+  await page.clock.runFor(3000);
+  await expect(page.locator("#supernova")).not.toHaveAttribute("data-increment-phase");
+  await page.clock.fastForward(30_100);
+  await expect(page.locator(".sn-count")).toHaveText("1,000");
+  await expect(page.locator("#supernova")).not.toHaveAttribute("data-increment-phase");
+});
+
+test("pausing a star in flight settles immediately on the confirmed count", async ({ page }) => {
+  let response = { ...data, current: 987, updatedAt: "2026-10-05T18:30:00Z" };
+  await page.unroute(liveUrl);
+  await page.route(liveUrl, route => route.fulfill({ json: response }));
+  await page.clock.install({ time: new Date("2026-10-05T18:29:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-05T18:30:00Z"));
+  await loaded(page);
+  await page.clock.runFor(100);
+  await expect(page.locator(".sn-count")).toHaveText("987");
+  response = { ...response, current: 988, updatedAt: "2026-10-05T18:30:30Z" };
+  const incoming = page.waitForResponse(liveUrl);
+  await page.clock.fastForward(30_100);
+  await incoming;
+  await page.clock.runFor(100);
+  await expect(page.locator("#supernova")).toHaveAttribute("data-increment-phase", "outbound");
+  await expect(page.locator(".sn-count")).toHaveText("987");
+  await page.keyboard.press("p");
+  await page.clock.runFor(50);
+  await expect(page.locator(".sn-count")).toHaveText("988");
+  await expect(page.locator("#supernova")).not.toHaveAttribute("data-increment-phase");
+  await page.keyboard.press("p");
+  await page.clock.runFor(3000);
+  await expect(page.locator(".sn-count")).toHaveText("988");
+  await expect(page.locator("#supernova")).not.toHaveAttribute("data-increment-phase");
+});
+
+test("ten touch taps replay the burst without changing progress and reset the tap counter", async ({ browser }) => {
+  const context = await browser.newContext({
+    hasTouch: true, viewport: { width: 390, height: 844 }, baseURL: "http://127.0.0.1:4321",
+  });
+  const page = await context.newPage();
+  await page.route(liveUrl, route => route.fulfill({ json: { ...data, current: 999, updatedAt: "2026-10-05T18:30:00Z" } }));
+  await page.clock.install({ time: new Date("2026-10-05T18:29:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-05T18:30:00Z"));
+  await loaded(page);
+  await page.clock.runFor(100);
+  const counter = page.locator(".sn-count"), root = page.locator("#supernova");
+  await expect(counter).toHaveText("999");
+  for (let i = 0; i < 9; i++) await counter.tap();
+  await page.clock.runFor(100);
+  await expect(root).not.toHaveAttribute("data-increment-phase");
+  await counter.tap();
+  await page.clock.runFor(100);
+  await expect(root).toHaveAttribute("data-increment-phase", "outbound");
+  await expect(counter).toHaveText("999");
+  await page.clock.runFor(2200);
+  await expect(root).toHaveAttribute("data-increment-phase", "impact");
+  await expect(counter).toHaveText("999");
+  await expect(page.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "999");
+  await expect(root).not.toHaveClass(/sn-completed/);
+  await expect(page.locator(".sn-demo")).toHaveText("LIVE UPDATES");
+  expect(await counter.evaluate(el => Number(getComputedStyle(el).getPropertyValue("--sn-count-scale")))).toBeGreaterThan(1.05);
+  await page.screenshot({ path: "test-results/increment-replay-mobile.png" });
+  await page.clock.runFor(2600);
+  for (let i = 0; i < 9; i++) await counter.tap();
+  await page.clock.runFor(100);
+  await expect(root).not.toHaveAttribute("data-increment-phase");
+  await counter.tap();
+  await page.clock.runFor(100);
+  await expect(root).toHaveAttribute("data-increment-phase", "outbound");
+  await expect(counter).toHaveText("999");
+  await context.close();
 });
 
 test("fits a mobile screen and honors reduced motion", async ({ page }) => {

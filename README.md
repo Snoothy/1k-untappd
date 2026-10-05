@@ -15,11 +15,18 @@ npm run dev
 - **P** — pause or resume motion.
 - **S** — trigger a solar flare without changing progress.
 - **Space** — preview the finale, then return to the real count.
+- **Tap the number 10 times** — replay the star flight and explosion without changing the count or progress. Enter/Space on the focused number also counts as a tap.
 - **Escape** — leave browser full screen.
 
 The production page fills the screen without a control footer. Use the keyboard shortcuts above to operate the projector. Reduced-motion preferences start the scene paused, and finale previews show the completed state immediately.
 
 A preview is explicitly labelled **FINALE PREVIEW**. It does not modify data. Leaving the preview restores the most recently received real snapshot, including counts above the goal.
+
+Each confirmed increase launches a bright star from the solar corona. It curves outward, leaves a gold-and-white trail, then accelerates into the middle of the counter. The number advances on impact, with a white-hot pulse, expanding shockwaves and a shower of sparks. Reaching the goal starts the full finale at that same impact. Press **Space** to see the sequence in the finale preview.
+
+The flight lasts 2.2 seconds. New snapshots received in flight are combined into the latest confirmed value; identical readings never replay it. Corrections and recovery from demo data apply directly. Paused or reduced-motion displays update immediately, and pausing in flight settles on the latest real count.
+
+The ten-tap replay is purely visual. Its tap counter resets after triggering, and a replay requested during another animation waits its turn. It respects paused and reduced-motion settings.
 
 ## Progress data
 

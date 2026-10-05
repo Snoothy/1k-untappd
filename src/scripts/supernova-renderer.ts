@@ -1,7 +1,17 @@
+export const INCREMENT_IMPACT = 2.2;
+export const INCREMENT_DURATION = 4.6;
+
+export interface CounterIncrement {
+  age: number;
+  angle: number;
+}
+
 export interface SupernovaFrame {
   time: number;
   finale: number | null;
   flare: number | null;
+  increment: CounterIncrement | null;
+  impactPoint: [number, number] | null;
 }
 
 export function createSupernovaRenderer(canvas: HTMLCanvasElement) {
@@ -266,6 +276,107 @@ export function createSupernovaRenderer(canvas: HTMLCanvasElement) {
     }
     ctx.restore();
   }
+  function counterIncrement(
+    burst: CounterIncrement,
+    cx: number,
+    cy: number,
+    r: number,
+    target: [number, number],
+  ) {
+    const { age, angle } = burst;
+    const polar = (a: number, radius: number): [number, number] => [
+      clamp(cx + Math.cos(a) * radius, r * 0.14, w - r * 0.14),
+      clamp(cy + Math.sin(a) * radius, r * 0.14, h - r * 0.14),
+    ];
+    const launch = polar(angle, r * 1.028);
+    const apex = polar(angle + 0.32, r * 1.68);
+    const outward = [launch, polar(angle, r * 1.5), polar(angle + 0.1, r * 1.72), apex];
+    const inward = [apex, polar(angle + 0.9, r * 1.8),
+      [target[0] + Math.cos(angle + 1.7) * r * 0.72,
+        target[1] + Math.sin(angle + 1.7) * r * 0.72], target];
+    function point(seconds: number): [number, number] {
+      const returning = seconds >= 0.94;
+      const points = returning ? inward : outward;
+      const q = returning
+        ? Math.pow(clamp((seconds - 0.94) / (INCREMENT_IMPACT - 0.94)), 1.65)
+        : 1 - (1 - clamp((seconds - 0.16) / 0.78)) ** 3;
+      const v = 1 - q;
+      return [0, 1].map(axis => v ** 3 * points[0][axis] +
+        3 * v * v * q * points[1][axis] + 3 * v * q * q * points[2][axis] +
+        q ** 3 * points[3][axis]) as [number, number];
+    }
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    // The corona ejects a star; its long ribbon makes the outward / return arc readable.
+    if (age < INCREMENT_IMPACT) {
+      const ignition = Math.exp(-age * 6);
+      lens(launch[0], launch[1], r * 0.54, ignition);
+      for (let i = 0; i < 18 && age < 0.7; i++) {
+        const a = i / 18 * TAU + angle;
+        const distance = r * age * 0.48;
+        line(launch[0] + Math.cos(a) * distance, launch[1] + Math.sin(a) * distance,
+          launch[0] + Math.cos(a) * distance * 0.5, launch[1] + Math.sin(a) * distance * 0.5,
+          `rgba(255,230,164,${ignition})`, 1.4);
+      }
+      for (let i = 46; i > 0; i--) {
+        const at = age - i * 0.014;
+        if (at < 0.16) continue;
+        const p = point(at), next = point(at + 0.014), strength = (1 - i / 47) ** 1.5;
+        line(p[0], p[1], next[0], next[1], `rgba(255,146,32,${strength * 0.36})`, r * 0.055 * strength + 1);
+        line(p[0], p[1], next[0], next[1], `rgba(255,229,165,${strength * 0.9})`, r * 0.017 * strength + 0.6);
+        line(p[0], p[1], next[0], next[1], `rgba(237,251,255,${strength})`, 1.2);
+        if (i % 3 === 0) {
+          const spread = r * (0.025 + i * 0.0015);
+          glow(p[0] + Math.sin(i * 2.3 + age * 3) * spread,
+            p[1] + Math.cos(i * 1.7 + age * 3) * spread, r * 0.013, "#ffcb76", strength * 0.75);
+        }
+      }
+      const head = point(age);
+      lens(head[0], head[1], r * 0.32, 1);
+      ctx.save();
+      ctx.translate(head[0], head[1]);
+      ctx.rotate(age * 4);
+      ctx.beginPath();
+      for (let i = 0; i < 16; i++) {
+        const a = i / 16 * TAU, radius = r * (i % 2 ? 0.013 : i % 4 ? 0.041 : 0.074);
+        if (!i) ctx.moveTo(Math.cos(a) * radius, Math.sin(a) * radius);
+        else ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius);
+      }
+      ctx.closePath();
+      ctx.fillStyle = "#fffae9";
+      ctx.fill();
+      ctx.restore();
+      const pull = smooth(1.55, INCREMENT_IMPACT, age);
+      glow(target[0], target[1], r * 0.64, "#ffa82f", pull * 0.22);
+      arc(target[0], target[1], r * (0.55 - pull * 0.48), 0, TAU,
+        `rgba(255,224,152,${pull * 0.45})`, 1);
+    } else {
+      const impact = age - INCREMENT_IMPACT;
+      const heat = Math.exp(-impact * 3.5);
+      lens(target[0], target[1], r * 0.92, heat);
+      glow(target[0], target[1], r * (0.5 + impact * 1.3), "#ffb431", Math.exp(-impact * 2) * 0.48);
+      // Rings start at the number, expanding through the corona into the whole scene.
+      for (let i = 0; i < 3; i++) {
+        const elapsed = impact - i * 0.16;
+        if (elapsed < 0) continue;
+        const radius = r * (0.06 + (1 - Math.exp(-elapsed * 2.2)) * (2.7 - i * 0.3));
+        const alpha = Math.exp(-elapsed * 2.3) * (0.85 - i * 0.18);
+        arc(target[0], target[1], radius, 0, TAU, `rgba(255,172,50,${alpha * 0.22})`, r * 0.055);
+        arc(target[0], target[1], radius, 0, TAU, `rgba(255,240,202,${alpha})`, i ? 1 : 2);
+      }
+      for (let i = 0; i < 190; i++) {
+        const p = debris[i], a = p.a + angle;
+        const distance = r * (1 - Math.exp(-impact * (1.3 + p.v))) * (0.65 + p.v * 1.65);
+        const tail = r * (0.018 + p.v * 0.07) * Math.exp(-impact * 1.2);
+        const x = target[0] + Math.cos(a) * distance, y = target[1] + Math.sin(a) * distance;
+        const alpha = Math.exp(-impact * (1.3 + p.drag)) * 0.95;
+        line(x, y, x - Math.cos(a) * tail, y - Math.sin(a) * tail,
+          i % 9 === 0 ? `rgba(154,230,255,${alpha})` : `rgba(255,222,151,${alpha})`,
+          0.7 + p.s * 0.65);
+      }
+    }
+    ctx.restore();
+  }
   function draw(state: SupernovaFrame) {
     if (!w || !h) return;
     const t = state.time,
@@ -277,15 +388,17 @@ export function createSupernovaRenderer(canvas: HTMLCanvasElement) {
       state.finale === null
         ? 0
         : smooth(4.5, 8.5, state.finale) * (1 - smooth(8.5, 9, state.finale));
+    const incrementHit = state.increment && state.increment.age >= INCREMENT_IMPACT
+      ? Math.exp(-(state.increment.age - INCREMENT_IMPACT) * 3.5) : 0;
     const hit =
       state.finale !== null && state.finale >= 8.5
         ? Math.exp(-(state.finale - 8.5) * 0.85)
         : 0;
     const wave = 0.5 + 0.5 * Math.sin(t * 0.64),
       rise = smooth(4, 14, t % 20) * (1 - smooth(15, 20, t % 20));
-    const energy = 0.9 + wave * 0.17 + rise * 0.25 + hit * 0.7 + build * 0.4;
+    const energy = 0.9 + wave * 0.17 + rise * 0.25 + hit * 0.7 + build * 0.4 + incrementHit * 0.8;
     const r =
-      base * (1 + Math.sin(t * 0.64) * 0.006 - build * 0.11 + hit * 0.065);
+      base * (1 + Math.sin(t * 0.64) * 0.006 - build * 0.11 + hit * 0.065 + incrementHit * 0.045);
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = "#05080d";
     ctx.fillRect(0, 0, w, h);
@@ -505,6 +618,8 @@ export function createSupernovaRenderer(canvas: HTMLCanvasElement) {
     if (state.flare !== null) shockwave(state.flare, cx, cy, r, 0.8);
     if (state.finale !== null && state.finale >= 8.5)
       celebration(state.finale - 8.5, cx, cy, r);
+    if (state.increment)
+      counterIncrement(state.increment, cx, cy, base, state.impactPoint ?? [cx, cy]);
   }
   return { resize, draw };
 }
