@@ -122,7 +122,10 @@ test("backs off after failures and pauses while offline or hidden", async ({ pag
   await page.route(liveUrl, route => {
     requests++;
     return fail
-      ? route.fulfill({status: 429, headers: {"Retry-After": "120"}, json: {error: "retry later"}})
+      ? route.fulfill({status: 429, headers: {
+        "Retry-After": "120",
+        "Access-Control-Expose-Headers": "Retry-After",
+      }, json: {error: "retry later"}})
       : route.fulfill({json: {...data, updatedAt: "2026-10-05T18:30:00Z"}});
   });
   await page.emulateMedia({reducedMotion: "reduce"});
@@ -134,6 +137,7 @@ test("backs off after failures and pauses while offline or hidden", async ({ pag
   await expect(page.locator(".sn-demo")).toHaveText("RECONNECTING");
   const afterFailure = requests;
   await page.clock.fastForward(60_000);
+  await page.clock.runFor(50);
   expect(requests).toBe(afterFailure);
   await page.clock.fastForward(61_000);
   await expect.poll(() => requests).toBe(afterFailure + 1);
