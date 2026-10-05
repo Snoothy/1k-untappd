@@ -1,5 +1,4 @@
 import {
-  canAcceptProgress,
   isConfirmed,
   normalizeProgress,
   previewCount,
@@ -7,6 +6,7 @@ import {
   type ProgressSnapshot,
 } from "../lib/progress";
 import { createSupernovaRenderer } from "./supernova-renderer";
+import { startProgressPolling, type ConnectionState } from "../lib/live-progress";
 
 export function mountSupernova(root: HTMLElement): void {
   if (root.dataset.mounted === "true") return;
@@ -58,7 +58,7 @@ export function mountSupernova(root: HTMLElement): void {
     last = performance.now(),
     accumulator = 0,
     disposed = false;
-  let pending: AbortController | null = null;
+  let connection: ConnectionState = "snapshot";
   function schedule() {
     if (!disposed && renderer && !frameId && !document.hidden)
       frameId = requestAnimationFrame(frame);
@@ -105,7 +105,12 @@ export function mountSupernova(root: HTMLElement): void {
       "aria-label",
       `Open ${progress.displayName} on Untappd`,
     );
-    source.textContent = state.preview ? "FINALE PREVIEW" : view.sourceLabel;
+    source.textContent = state.preview ? "FINALE PREVIEW"
+      : !isConfirmed(progress) ? view.sourceLabel
+      : connection === "live" ? "LIVE UPDATES"
+      : connection === "offline" ? "OFFLINE · LAST UPDATE"
+      : connection === "retrying" ? "RECONNECTING"
+      : view.sourceLabel;
     updated.textContent = state.preview
       ? "Simulation · press Space to return"
       : view.updatedLabel;
@@ -200,24 +205,13 @@ export function mountSupernova(root: HTMLElement): void {
     }
     if (!state.paused || state.dirty) schedule();
   }
-  async function refresh() {
-    if (disposed || pending || document.hidden || !root.dataset.progressUrl)
-      return;
-    const request = new AbortController();
-    pending = request;
-    const timeout = window.setTimeout(() => request.abort(), 8000);
-    try {
-      const response = await fetch(root.dataset.progressUrl, {
-        cache: "no-store",
-        signal: request.signal,
-      });
-      if (!response.ok) return;
-      const next = normalizeProgress(await response.json());
-      if (disposed || !next || !canAcceptProgress(progress, next)) return;
-      const crossedGoal =
-        progress.current < progress.target &&
-        next.current >= next.target &&
-        isConfirmed(next);
+  const stopPolling = startProgressPolling({
+    liveUrl: root.dataset.liveProgressUrl!,
+    snapshotUrl: root.dataset.progressUrl!,
+    getCurrent: () => progress,
+    onProgress(next) {
+      const crossedGoal = progress.current < progress.target &&
+        next.current >= next.target && isConfirmed(next);
       progress = next;
       if (!state.preview) {
         setCount(next.current);
@@ -227,13 +221,12 @@ export function mountSupernova(root: HTMLElement): void {
           invalidate();
         }
       }
-    } catch {
-      // Keep the last valid snapshot and its actual timestamp when offline or between deployments.
-    } finally {
-      window.clearTimeout(timeout);
-      if (pending === request) pending = null;
-    }
-  }
+    },
+    onConnection(next) {
+      connection = next;
+      if (!state.preview) setCount(progress.current);
+    },
+  });
   const observer = new ResizeObserver(() => {
     const rect = stage.getBoundingClientRect();
     renderer?.resize(rect.width, rect.height);
@@ -295,7 +288,6 @@ export function mountSupernova(root: HTMLElement): void {
       } else {
         last = performance.now();
         invalidate();
-        void refresh();
       }
     },
     options,
@@ -308,17 +300,13 @@ export function mountSupernova(root: HTMLElement): void {
     },
     options,
   );
-  const interval = window.setInterval(() => {
-    void refresh();
-  }, 60_000);
   function dispose() {
     if (disposed) return;
     disposed = true;
     listeners.abort();
     observer.disconnect();
     cancelAnimationFrame(frameId);
-    window.clearInterval(interval);
-    pending?.abort();
+    stopPolling();
     delete root.dataset.mounted;
   }
   setCount(progress.current);

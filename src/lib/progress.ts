@@ -70,6 +70,8 @@ export function canAcceptProgress(
 ): boolean {
   // A failed scrape must not replace a confirmed count with placeholder data.
   if (isConfirmed(current) && !isConfirmed(next)) return false;
+  // Placeholder timestamps must not prevent recovery to a real count.
+  if (!isConfirmed(current) && isConfirmed(next)) return true;
   if (
     current.updatedAt &&
     next.updatedAt &&

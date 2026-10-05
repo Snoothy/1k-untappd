@@ -25,7 +25,11 @@ A preview is explicitly labelled **FINALE PREVIEW**. It does not modify data. Le
 
 `npm run fetch:untappd` scrapes the public Untappd profile’s **Unique** count and writes `src/data/progress.json`. Set `UNTAPPD_USERNAME` to change the profile; it defaults to `Snoothy`. No API credentials are required.
 
-Astro embeds that snapshot in the initial HTML and publishes the same data at `/1k-untappd/progress.json`. An open page checks that static endpoint every 60 seconds and when it becomes visible again. It can pick up new deployments without reloading. This is a build-time snapshot, not a direct live connection to Untappd; the screen displays the source and actual update time.
+Astro embeds a build snapshot in the initial HTML so the page is immediately readable. The browser then requests fresh progress immediately and every **30 seconds** from the Sites API configured in `src/data/live-config.json`. The API reads Snoothy’s public Untappd profile and shares a **60-second cache**; healthy updates typically appear within about **60–90 seconds**, subject to Untappd’s own updates and availability. The count and progress bar update in place, and crossing the goal triggers the finale automatically.
+
+The endpoint is `https://snoothy-live-progress.snoothy.chatgpt.site/api/progress`. It is public and read-only, permits the GitHub Pages origin through CORS, requires no browser credentials and only exposes the progress snapshot. Its source is maintained in the companion **Snoothy Live Progress** Site. The root of that Site redirects to this projector page.
+
+Polling pauses in hidden tabs or offline, resumes on visibility/focus/reconnection, avoids overlapping requests, times out after eight seconds and backs off to at most five minutes on failure. The screen keeps the original update time and shows **RECONNECTING** or **OFFLINE · LAST UPDATE** when appropriate. API failures never fabricate a count. `/1k-untappd/progress.json` remains a secondary build-snapshot fallback; it is not presented as live data.
 
 If scraping fails, the existing fetch script supplies the **800 / 1,000** fallback, visibly labelled **DEMO DATA**. A page already showing a confirmed count retains it if a later response is fallback data, older data, malformed or unavailable.
 
@@ -47,4 +51,4 @@ Pull requests run type checks, data tests, the static build and Chromium checks 
 
 Merging to `main` runs `.github/workflows/deploy.yml`, refreshes progress and publishes the static site to GitHub Pages. Pages must use **GitHub Actions** as its source.
 
-The existing scheduled rebuilds run daily at **05:17 UTC** and hourly **18:00–23:00 UTC on Friday and Saturday**. The client refresh interval does not increase the frequency of those upstream scrapes.
+The existing scheduled rebuilds run daily at **05:17 UTC** and hourly **18:00–23:00 UTC on Friday and Saturday**. These rebuilds provide the fallback snapshot; near-live updates use the separate Sites API and do not wait for a deployment.
