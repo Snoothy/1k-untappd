@@ -85,3 +85,8 @@ test("preview timing reaches the configured goal without altering the snapshot",
   assert.equal(previewCount(500, 8.5), 500);
   assert.equal(snapshot.current, 987);
 });
+
+
+test("a confirmed count supersedes a newer placeholder timestamp", () => {
+  assert.equal(canAcceptProgress({...snapshot, source: "fallback", current: 800, updatedAt: "2026-10-05T18:00:00Z"}, snapshot), true);
+});

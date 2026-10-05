@@ -1,5 +1,6 @@
 ---
 import { normalizeProgress, progressView } from '../lib/progress';
+import live from '../data/live-config.json';
 import '../styles/supernova.css';
 
 interface Props {
@@ -22,6 +23,7 @@ const baseUrl = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/`;
   data-current={snapshot.current} data-target={snapshot.target}
   data-source={snapshot.source} data-updated-at={snapshot.updatedAt}
   data-progress-url={`${baseUrl}progress.json`}
+  data-live-progress-url={live.progressUrl}
   class:list={{ 'sn-completed': view.complete }}>
 
   <section class="sn-stage" aria-labelledby="progress-title">
