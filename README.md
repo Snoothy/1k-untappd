@@ -17,7 +17,7 @@ npm run dev
 - **Space** — preview the finale, then return to the real count.
 - **Escape** — leave browser full screen.
 
-Buttons expose the same actions. Full-screen controls fade away after three seconds; move the pointer, tap the screen or focus a control to reveal them. Reduced-motion preferences start the scene paused, and finale previews show the completed state immediately.
+The production page fills the screen without a control footer. Use the keyboard shortcuts above to operate the projector. Reduced-motion preferences start the scene paused, and finale previews show the completed state immediately.
 
 A preview is explicitly labelled **FINALE PREVIEW**. It does not modify data. Leaving the preview restores the most recently received real snapshot, including counts above the goal.
 
