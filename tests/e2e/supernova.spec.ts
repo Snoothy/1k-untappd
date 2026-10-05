@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import live from "../../src/data/live-config.json";
+import live from "../../src/data/live-config.json" with { type: "json" };
 
 const site = "/1k-untappd/";
 const liveUrl = live.progressUrl;
