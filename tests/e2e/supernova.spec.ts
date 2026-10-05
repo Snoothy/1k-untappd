@@ -16,6 +16,7 @@ async function loaded(page: Page) {
     "data-mounted",
     "true",
   );
+  await expect(page.locator(".sn-controls")).toHaveCount(0);
 }
 
 test("renders real data on the server even with JavaScript disabled", async ({
@@ -33,7 +34,7 @@ test("renders real data on the server even with JavaScript disabled", async ({
     snapshot.current.toLocaleString("en-US"),
   );
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.locator(".sn-controls")).toBeHidden();
+  await expect(page.locator(".sn-controls")).toHaveCount(0);
   await context.close();
 });
 
@@ -44,7 +45,7 @@ test("plays the finale, restores the latest real count, and supports full screen
   page.on("pageerror", (error) => errors.push(error.message));
   await loaded(page);
   const original = await page.locator(".sn-count").innerText();
-  await page.getByRole("button", { name: "Full screen", exact: true }).click();
+  await page.keyboard.press("f");
   await expect
     .poll(() => page.evaluate(() => document.fullscreenElement?.id))
     .toBe("supernova");
@@ -52,11 +53,9 @@ test("plays the finale, restores the latest real count, and supports full screen
   await expect
     .poll(() => page.evaluate(() => document.fullscreenElement === null))
     .toBe(true);
-  await page.getByRole("button", { name: "Solar flare", exact: true }).click();
+  await page.keyboard.press("s");
   await expect(page.locator(".sn-count")).toHaveText(original);
-  await page
-    .getByRole("button", { name: "Preview 1,000", exact: true })
-    .click();
+  await page.keyboard.press("Space");
   await expect(page.locator(".sn-demo")).toHaveText("FINALE PREVIEW");
   await expect(page.locator(".sn-count")).toHaveText("997");
   await expect(page.locator(".sn-count")).toHaveText("1,000", {
@@ -70,9 +69,7 @@ test("plays the finale, restores the latest real count, and supports full screen
     path: "test-results/supernova-finale.png",
     fullPage: true,
   });
-  await page
-    .getByRole("button", { name: "Return to progress", exact: true })
-    .click();
+  await page.keyboard.press("Space");
   await expect(page.locator(".sn-count")).toHaveText(original);
   await page.screenshot({
     path: "test-results/supernova-desktop.png",
@@ -94,15 +91,11 @@ test("refreshes deployed snapshots without replacing confirmed data with fallbac
   await page.clock.fastForward(60_100);
   await expect(page.locator(".sn-count")).toHaveText("987");
   await expect(page.locator(".sn-demo")).toHaveText("UNTAPPD SNAPSHOT");
-  await page
-    .getByRole("button", { name: "Preview 1,000", exact: true })
-    .click();
+  await page.keyboard.press("Space");
   await expect(page.locator(".sn-count")).toHaveText("1,000");
   response = { ...data, current: 992, updatedAt: "2026-10-05T17:05:00Z" };
   await page.clock.fastForward(60_100);
-  await page
-    .getByRole("button", { name: "Return to progress", exact: true })
-    .click();
+  await page.keyboard.press("Space");
   await expect(page.locator(".sn-count")).toHaveText("992");
   response = {
     ...data,
@@ -128,12 +121,11 @@ test("fits a mobile screen and honors reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await loaded(page);
   await expect(page.locator("#supernova")).toHaveClass(/sn-paused/);
-  await expect(
-    page.getByRole("button", { name: "Play", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await page
-    .getByRole("button", { name: "Preview 1,000", exact: true })
-    .click();
+  await page.keyboard.press("p");
+  await expect(page.locator("#supernova")).not.toHaveClass(/sn-paused/);
+  await page.keyboard.press("p");
+  await expect(page.locator("#supernova")).toHaveClass(/sn-paused/);
+  await page.keyboard.press("Space");
   await expect(page.locator(".sn-count")).toHaveText("1,000");
   expect(
     await page.evaluate(

@@ -28,8 +28,7 @@ export function mountSupernova(root: HTMLElement): void {
   }
   const stage = required(".sn-stage"),
     core = required(".sn-core");
-  const canvas = required<HTMLCanvasElement>("canvas"),
-    controls = required(".sn-controls");
+  const canvas = required<HTMLCanvasElement>("canvas");
   const count = required(".sn-count"),
     track = required(".sn-track"),
     fill = required(".sn-fill");
@@ -37,12 +36,6 @@ export function mountSupernova(root: HTMLElement): void {
     updated = required<HTMLTimeElement>(".sn-updated");
   const announcement = required(".sn-announcement"),
     status = required(".sn-status");
-  const pauseButton = required<HTMLButtonElement>("[data-action=pause]");
-  const flareButton = required<HTMLButtonElement>("[data-action=flare]");
-  const finaleButton = required<HTMLButtonElement>("[data-action=finale]");
-  const fullscreenButton = required<HTMLButtonElement>(
-    "[data-action=fullscreen]",
-  );
   const renderer = createSupernovaRenderer(canvas);
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
   const listeners = new AbortController(),
@@ -64,8 +57,7 @@ export function mountSupernova(root: HTMLElement): void {
   let frameId = 0,
     last = performance.now(),
     accumulator = 0,
-    disposed = false,
-    hideControlsTimer = 0;
+    disposed = false;
   let pending: AbortController | null = null;
   function schedule() {
     if (!disposed && renderer && !frameId && !document.hidden)
@@ -115,19 +107,14 @@ export function mountSupernova(root: HTMLElement): void {
     );
     source.textContent = state.preview ? "FINALE PREVIEW" : view.sourceLabel;
     updated.textContent = state.preview
-      ? "Simulation · press again to return"
+      ? "Simulation · press Space to return"
       : view.updatedLabel;
     updated.dateTime = state.preview ? "" : progress.updatedAt;
-    finaleButton.textContent = state.preview
-      ? "Return to progress"
-      : `Preview ${view.target}`;
     root.classList.toggle("sn-completed", view.complete);
     invalidate();
   }
   function syncPause() {
     root.classList.toggle("sn-paused", state.paused);
-    pauseButton.textContent = state.paused ? "Play" : "Pause";
-    pauseButton.setAttribute("aria-pressed", String(state.paused));
     last = performance.now();
     accumulator = 0;
     invalidate();
@@ -160,15 +147,6 @@ export function mountSupernova(root: HTMLElement): void {
     }
     invalidate();
   }
-  function revealControls() {
-    if (document.fullscreenElement !== root) return;
-    root.classList.add("sn-controls-visible");
-    window.clearTimeout(hideControlsTimer);
-    hideControlsTimer = window.setTimeout(
-      () => root.classList.remove("sn-controls-visible"),
-      3000,
-    );
-  }
   async function fullscreen() {
     status.textContent = "";
     try {
@@ -176,7 +154,6 @@ export function mountSupernova(root: HTMLElement): void {
       else {
         await root.requestFullscreen();
         root.focus({ preventScroll: true });
-        revealControls();
       }
     } catch {
       status.textContent =
@@ -263,29 +240,11 @@ export function mountSupernova(root: HTMLElement): void {
     invalidate();
   });
   observer.observe(stage);
-  pauseButton.addEventListener("click", pause, options);
-  flareButton.addEventListener("click", flare, options);
-  finaleButton.addEventListener("click", finale, options);
-  fullscreenButton.addEventListener("click", fullscreen, options);
-  root.addEventListener("pointermove", revealControls, options);
-  root.addEventListener("pointerdown", revealControls, options);
   reduced.addEventListener(
     "change",
     () => {
       state.paused = reduced.matches;
       syncPause();
-    },
-    options,
-  );
-  document.addEventListener(
-    "fullscreenchange",
-    () => {
-      fullscreenButton.textContent =
-        document.fullscreenElement === root
-          ? "Exit full screen"
-          : "Full screen";
-      if (document.fullscreenElement !== root)
-        root.classList.remove("sn-controls-visible");
     },
     options,
   );
@@ -359,13 +318,9 @@ export function mountSupernova(root: HTMLElement): void {
     observer.disconnect();
     cancelAnimationFrame(frameId);
     window.clearInterval(interval);
-    window.clearTimeout(hideControlsTimer);
     pending?.abort();
     delete root.dataset.mounted;
   }
-  controls.hidden = false;
-  pauseButton.disabled = !renderer;
-  flareButton.disabled = !renderer;
   setCount(progress.current);
   syncPause();
 }

@@ -16,7 +16,7 @@
   isolation: isolate;
   overflow: hidden;
   width: 100%;
-  aspect-ratio: 16/9;
+  height: 100dvh;
   min-height: 390px;
   container-type: inline-size;
   background: #05080d;
@@ -240,61 +240,6 @@
 #supernova .sn-demo {
   white-space: nowrap;
 }
-#supernova .sn-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 16px 20px;
-  background: #101216;
-  border-top: 1px solid #a78a592e;
-}
-#supernova .sn-caption {
-  display: grid;
-  gap: 5px;
-}
-#supernova .sn-caption strong {
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  color: #f6ddaf;
-}
-#supernova .sn-caption > span {
-  font-size: 12px;
-  color: #c1b9ab;
-  line-height: 1.4;
-}
-#supernova .sn-actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-#supernova .sn-button {
-  padding: 11px 14px;
-  border: 1px solid #655642;
-  border-radius: 4px;
-  color: #f5e6cc;
-  background: #1c1d21;
-  font:
-    500 12px Arial,
-    Helvetica,
-    sans-serif;
-  white-space: nowrap;
-}
-#supernova .sn-button:hover {
-  background: #3e3326;
-}
-#supernova .sn-primary {
-  color: #271709;
-  background: linear-gradient(120deg, #f8c76c, #fff0c6);
-  border-color: #ffe1a6;
-  box-shadow: 0 0 22px #ffc14819;
-}
-#supernova .sn-primary:hover {
-  background: #fff5d6;
-}
 #supernova .sn-announcement {
   position: absolute;
   width: 1px;
@@ -330,7 +275,6 @@
 }
 @media (max-width: 600px) {
   #supernova .sn-stage {
-    aspect-ratio: auto;
     min-height: 600px;
   }
   #supernova .sn-header {
@@ -396,20 +340,6 @@
   #supernova .sn-bottom > span:first-child {
     max-width: 55%;
   }
-  #supernova .sn-controls {
-    padding: 16px;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
-  }
-  #supernova .sn-actions {
-    justify-content: flex-end;
-    gap: 6px;
-  }
-  #supernova .sn-button {
-    min-height: 44px;
-    padding: 10px 12px;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   #supernova .sn-count {
@@ -430,9 +360,6 @@
 #supernova .sn-poem {
   white-space: pre-line;
 }
-#supernova .sn-controls[hidden] {
-  display: none;
-}
 #supernova .sn-source {
   display: grid;
   gap: 3px;
@@ -452,10 +379,6 @@
 #supernova .sn-status:empty {
   display: none;
 }
-#supernova .sn-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
 #supernova:fullscreen {
   width: 100vw;
   height: 100dvh;
@@ -468,24 +391,6 @@
   min-height: 0;
   aspect-ratio: auto;
 }
-#supernova:fullscreen .sn-controls {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 2;
-  opacity: 0;
-  background: #101216f5;
-  transition: opacity 0.2s;
-  cursor: auto;
-}
-#supernova:fullscreen.sn-controls-visible .sn-controls,
-#supernova:fullscreen .sn-controls:focus-within {
-  opacity: 1;
-}
-#supernova:fullscreen.sn-controls-visible {
-  cursor: auto;
-}
 #supernova:fullscreen .sn-status:not(:empty) {
   position: absolute;
   top: 0;
@@ -495,15 +400,7 @@
 }
 @media (min-width: 1100px) {
   #supernova .sn-stage {
-    aspect-ratio: auto;
-    height: calc(100dvh - 82px);
     min-height: 540px;
-  }
-}
-@media (max-width: 760px) {
-  #supernova .sn-controls {
-    flex-direction: column;
-    align-items: stretch;
   }
 }
 @media (max-width: 600px) {
@@ -517,11 +414,5 @@
   }
   #supernova .sn-demo {
     white-space: normal;
-  }
-  #supernova .sn-caption > span {
-    line-height: 1.6;
-  }
-  #supernova .sn-button {
-    padding: 10px 12px;
   }
 }
