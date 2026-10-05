@@ -1,0 +1,371 @@
+import {
+  canAcceptProgress,
+  isConfirmed,
+  normalizeProgress,
+  previewCount,
+  progressView,
+  type ProgressSnapshot,
+} from "../lib/progress";
+import { createSupernovaRenderer } from "./supernova-renderer";
+
+export function mountSupernova(root: HTMLElement): void {
+  if (root.dataset.mounted === "true") return;
+  const initial = normalizeProgress({
+    username: root.dataset.username,
+    displayName: root.dataset.displayName,
+    current: Number(root.dataset.current),
+    target: Number(root.dataset.target),
+    source: root.dataset.source,
+    updatedAt: root.dataset.updatedAt,
+  });
+  if (!initial) return;
+  let progress: ProgressSnapshot = initial;
+  root.dataset.mounted = "true";
+  function required<T extends HTMLElement = HTMLElement>(selector: string): T {
+    const element = root.querySelector<T>(selector);
+    if (!element) throw new Error(`Supernova element missing: ${selector}`);
+    return element;
+  }
+  const stage = required(".sn-stage"),
+    core = required(".sn-core");
+  const canvas = required<HTMLCanvasElement>("canvas"),
+    controls = required(".sn-controls");
+  const count = required(".sn-count"),
+    track = required(".sn-track"),
+    fill = required(".sn-fill");
+  const source = required(".sn-demo"),
+    updated = required<HTMLTimeElement>(".sn-updated");
+  const announcement = required(".sn-announcement"),
+    status = required(".sn-status");
+  const pauseButton = required<HTMLButtonElement>("[data-action=pause]");
+  const flareButton = required<HTMLButtonElement>("[data-action=flare]");
+  const finaleButton = required<HTMLButtonElement>("[data-action=finale]");
+  const fullscreenButton = required<HTMLButtonElement>(
+    "[data-action=fullscreen]",
+  );
+  const renderer = createSupernovaRenderer(canvas);
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const listeners = new AbortController(),
+    options = { signal: listeners.signal };
+  const state = {
+    time: 6,
+    paused: reduced.matches,
+    finale:
+      isConfirmed(progress) &&
+      progress.current >= progress.target &&
+      !reduced.matches
+        ? 8.5
+        : (null as number | null),
+    preview: false,
+    count: progress.current,
+    flare: null as number | null,
+    dirty: true,
+  };
+  let frameId = 0,
+    last = performance.now(),
+    accumulator = 0,
+    disposed = false,
+    hideControlsTimer = 0;
+  let pending: AbortController | null = null;
+  function schedule() {
+    if (!disposed && renderer && !frameId && !document.hidden)
+      frameId = requestAnimationFrame(frame);
+  }
+  function invalidate() {
+    state.dirty = true;
+    schedule();
+  }
+  function setCount(value: number) {
+    state.count = value;
+    const view = progressView(progress, value);
+    count.textContent = view.current;
+    count.setAttribute("aria-label", view.description);
+    fill.style.width = `${view.percentage}%`;
+    track.setAttribute("aria-valuemax", String(progress.target));
+    track.setAttribute("aria-valuenow", String(view.progressValue));
+    track.setAttribute("aria-valuetext", view.description);
+    required(".sn-complete").textContent = view.percentLabel;
+    required(".sn-remaining").textContent = view.remainingLabel;
+    required(".sn-eyebrow").textContent = view.complete
+      ? "A LEGEND IS BORN."
+      : value === progress.target - 1
+        ? "ONE. MORE. STORY."
+        : "THE JOURNEY SO FAR";
+    required(".sn-unit").textContent = view.complete
+      ? `${view.target} UNIQUE BEERS REACHED`
+      : `OF ${view.target} UNIQUE BEERS`;
+    required(".sn-title-first").textContent = view.complete
+      ? "LEGEND."
+      : "THE ROAD";
+    required(".sn-title-last").textContent = view.complete
+      ? "UNLOCKED."
+      : "TO LEGEND.";
+    required(".sn-poem").textContent =
+      `${progress.target === 1000 ? "A thousand beers." : `${view.target} unique beers.`}\n${view.complete ? "An unforgettable journey." : "A story worth telling."}`;
+    required(".sn-target-label").textContent = `ROAD TO ${view.target}`;
+    required(".sn-name").textContent = progress.displayName;
+    required(".sn-seal").textContent = progress.displayName
+      .slice(0, 1)
+      .toUpperCase();
+    const profile = required<HTMLAnchorElement>(".sn-brand");
+    profile.href = `https://untappd.com/user/${encodeURIComponent(progress.username)}`;
+    profile.setAttribute(
+      "aria-label",
+      `Open ${progress.displayName} on Untappd`,
+    );
+    source.textContent = state.preview ? "FINALE PREVIEW" : view.sourceLabel;
+    updated.textContent = state.preview
+      ? "Simulation · press again to return"
+      : view.updatedLabel;
+    updated.dateTime = state.preview ? "" : progress.updatedAt;
+    finaleButton.textContent = state.preview
+      ? "Return to progress"
+      : `Preview ${view.target}`;
+    root.classList.toggle("sn-completed", view.complete);
+    invalidate();
+  }
+  function syncPause() {
+    root.classList.toggle("sn-paused", state.paused);
+    pauseButton.textContent = state.paused ? "Play" : "Pause";
+    pauseButton.setAttribute("aria-pressed", String(state.paused));
+    last = performance.now();
+    accumulator = 0;
+    invalidate();
+  }
+  function pause() {
+    state.paused = !state.paused;
+    syncPause();
+  }
+  function flare() {
+    if (!renderer || (state.flare !== null && state.flare < 1.5)) return;
+    state.flare = state.paused ? 1.6 : 0;
+    announcement.textContent = "Solar flare.";
+    invalidate();
+  }
+  function finale() {
+    if (state.preview) {
+      state.preview = false;
+      state.finale = null;
+      state.flare = null;
+      setCount(progress.current);
+      announcement.textContent = `Returned to progress: ${progressView(progress).description}.`;
+    } else {
+      state.preview = true;
+      state.finale = state.paused || !renderer ? 11 : 0;
+      setCount(previewCount(progress.target, state.finale));
+      announcement.textContent =
+        state.paused || !renderer
+          ? `Finale preview: ${progressView(progress, progress.target).description}.`
+          : "Finale preview. The final three beers.";
+    }
+    invalidate();
+  }
+  function revealControls() {
+    if (document.fullscreenElement !== root) return;
+    root.classList.add("sn-controls-visible");
+    window.clearTimeout(hideControlsTimer);
+    hideControlsTimer = window.setTimeout(
+      () => root.classList.remove("sn-controls-visible"),
+      3000,
+    );
+  }
+  async function fullscreen() {
+    status.textContent = "";
+    try {
+      if (document.fullscreenElement === root) await document.exitFullscreen();
+      else {
+        await root.requestFullscreen();
+        root.focus({ preventScroll: true });
+        revealControls();
+      }
+    } catch {
+      status.textContent =
+        "Full screen is unavailable here. Use your browser’s full-screen command instead.";
+    }
+  }
+  function frame(now: number) {
+    frameId = 0;
+    if (disposed || !root.isConnected) {
+      dispose();
+      return;
+    }
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+    accumulator += dt;
+    if (!document.hidden && (accumulator >= 1 / 40 || state.dirty)) {
+      if (!state.paused) {
+        state.time += accumulator;
+        if (state.flare !== null) {
+          state.flare += accumulator;
+          if (state.flare > 8) state.flare = null;
+        }
+        if (state.finale !== null) {
+          state.finale += accumulator;
+          // The show never overwrites real counts, including counts beyond the goal.
+          if (state.preview) {
+            const next = previewCount(progress.target, state.finale);
+            if (next !== state.count) {
+              setCount(next);
+              if (next >= progress.target)
+                announcement.textContent = `${progressView(progress, next).current} unique beers. Legend unlocked.`;
+            }
+          }
+        }
+      }
+      renderer?.draw(state);
+      const hit =
+        state.finale !== null && state.finale >= 8.5
+          ? Math.exp(-(state.finale - 8.5) * 0.85)
+          : 0;
+      core.style.transform = `scale(${(1 + hit * 0.035).toFixed(4)})`;
+      state.dirty = false;
+      accumulator = 0;
+    }
+    if (!state.paused || state.dirty) schedule();
+  }
+  async function refresh() {
+    if (disposed || pending || document.hidden || !root.dataset.progressUrl)
+      return;
+    const request = new AbortController();
+    pending = request;
+    const timeout = window.setTimeout(() => request.abort(), 8000);
+    try {
+      const response = await fetch(root.dataset.progressUrl, {
+        cache: "no-store",
+        signal: request.signal,
+      });
+      if (!response.ok) return;
+      const next = normalizeProgress(await response.json());
+      if (disposed || !next || !canAcceptProgress(progress, next)) return;
+      const crossedGoal =
+        progress.current < progress.target &&
+        next.current >= next.target &&
+        isConfirmed(next);
+      progress = next;
+      if (!state.preview) {
+        setCount(next.current);
+        if (crossedGoal) {
+          state.finale = state.paused ? 11 : 8.5;
+          announcement.textContent = `${progressView(next).current} unique beers. Legend unlocked.`;
+          invalidate();
+        }
+      }
+    } catch {
+      // Keep the last valid snapshot and its actual timestamp when offline or between deployments.
+    } finally {
+      window.clearTimeout(timeout);
+      if (pending === request) pending = null;
+    }
+  }
+  const observer = new ResizeObserver(() => {
+    const rect = stage.getBoundingClientRect();
+    renderer?.resize(rect.width, rect.height);
+    invalidate();
+  });
+  observer.observe(stage);
+  pauseButton.addEventListener("click", pause, options);
+  flareButton.addEventListener("click", flare, options);
+  finaleButton.addEventListener("click", finale, options);
+  fullscreenButton.addEventListener("click", fullscreen, options);
+  root.addEventListener("pointermove", revealControls, options);
+  root.addEventListener("pointerdown", revealControls, options);
+  reduced.addEventListener(
+    "change",
+    () => {
+      state.paused = reduced.matches;
+      syncPause();
+    },
+    options,
+  );
+  document.addEventListener(
+    "fullscreenchange",
+    () => {
+      fullscreenButton.textContent =
+        document.fullscreenElement === root
+          ? "Exit full screen"
+          : "Full screen";
+      if (document.fullscreenElement !== root)
+        root.classList.remove("sn-controls-visible");
+    },
+    options,
+  );
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        event.repeat ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey
+      )
+        return;
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(
+          'input,textarea,select,[contenteditable="true"],button,a',
+        ) &&
+        document.fullscreenElement !== root
+      )
+        return;
+      const key = event.key.toLowerCase();
+      if (key === "f") {
+        event.preventDefault();
+        void fullscreen();
+      } else if (key === "p" && renderer) {
+        event.preventDefault();
+        pause();
+      } else if (key === "s" && renderer) {
+        event.preventDefault();
+        flare();
+      } else if (event.code === "Space") {
+        event.preventDefault();
+        finale();
+      }
+    },
+    options,
+  );
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      if (document.hidden) {
+        cancelAnimationFrame(frameId);
+        frameId = 0;
+        accumulator = 0;
+      } else {
+        last = performance.now();
+        invalidate();
+        void refresh();
+      }
+    },
+    options,
+  );
+  document.addEventListener("astro:before-swap", dispose, options);
+  window.addEventListener(
+    "pagehide",
+    (event) => {
+      if (!event.persisted) dispose();
+    },
+    options,
+  );
+  const interval = window.setInterval(() => {
+    void refresh();
+  }, 60_000);
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    listeners.abort();
+    observer.disconnect();
+    cancelAnimationFrame(frameId);
+    window.clearInterval(interval);
+    window.clearTimeout(hideControlsTimer);
+    pending?.abort();
+    delete root.dataset.mounted;
+  }
+  controls.hidden = false;
+  pauseButton.disabled = !renderer;
+  flareButton.disabled = !renderer;
+  setCount(progress.current);
+  syncPause();
+}

@@ -1,5 +1,8 @@
 ---
-type Props = {
+import { normalizeProgress, progressView } from '../lib/progress';
+import '../styles/supernova.css';
+
+interface Props {
   username: string;
   displayName: string;
   avatarUrl?: string;
@@ -7,345 +10,60 @@ type Props = {
   target: number;
   source?: string;
   updatedAt?: string;
-};
+}
 
-const baseUrl = import.meta.env.BASE_URL.endsWith('/')
-  ? import.meta.env.BASE_URL
-  : `${import.meta.env.BASE_URL}/`;
-const badgeImageUrl = `${baseUrl}964e85b057fc7f7c5447f0fb2b247b2e-fb_300x300.jpg`;
-
-const {
-  username,
-  displayName,
-  avatarUrl = badgeImageUrl,
-  current,
-  target,
-  source = 'fallback',
-  updatedAt = '',
-} = Astro.props;
-
-const resolvedAvatarUrl = avatarUrl || badgeImageUrl;
+const snapshot = normalizeProgress(Astro.props);
+if (!snapshot) throw new Error('Invalid unique-beer progress data');
+const view = progressView(snapshot);
+const baseUrl = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/`;
 ---
+<div id="supernova" data-supernova tabindex="-1"
+  data-username={snapshot.username} data-display-name={snapshot.displayName}
+  data-current={snapshot.current} data-target={snapshot.target}
+  data-source={snapshot.source} data-updated-at={snapshot.updatedAt}
+  data-progress-url={`${baseUrl}progress.json`}
+  class:list={{ 'sn-completed': view.complete }}>
 
-<beer-progress-card
-  username={username}
-  display-name={displayName}
-  avatar-url={resolvedAvatarUrl}
-  current={current}
-  target={target}
-  source={source}
-  updated-at={updatedAt}
-></beer-progress-card>
+  <section class="sn-stage" aria-labelledby="progress-title">
+    <canvas class="sn-canvas" aria-hidden="true"></canvas>
+    <div class="sn-vignette" aria-hidden="true"></div>
+    <header class="sn-header">
+      <a class="sn-brand" href={`https://untappd.com/user/${encodeURIComponent(snapshot.username)}`} aria-label={`Open ${snapshot.displayName} on Untappd`}>
+        <span class="sn-seal" aria-hidden="true">{snapshot.displayName.slice(0, 1).toUpperCase()}</span><div><span class="sn-name">{snapshot.displayName}</span><small>THE UNTAPPD ODYSSEY</small></div>
+      </a>
+      <div class="sn-edition">SUPERNOVA<small class="sn-target-label">ROAD TO {view.target}</small></div>
+    </header>
+    <div class="sn-manifesto">
+      <p class="sn-kicker"><span aria-hidden="true"></span> EVERY BEER, A NEW WORLD.</p>
+      <h1 id="progress-title"><span class="sn-title-first">{view.complete ? "LEGEND." : "THE ROAD"}</span><em class="sn-title-last">{view.complete ? "UNLOCKED." : "TO LEGEND."}</em></h1>
+      <p class="sn-poem">{snapshot.target === 1000 ? "A thousand beers." : `${view.target} unique beers.`}<br />{view.complete ? "An unforgettable journey." : "A story worth telling."}</p>
+      <div class="sn-rule" aria-hidden="true"></div>
+    </div>
+    <div class="sn-core">
+      <p class="sn-eyebrow">{view.complete ? "A LEGEND IS BORN." : "THE JOURNEY SO FAR"}</p>
+      <div class="sn-count" aria-label={view.description}>{view.current}</div>
+      <p class="sn-unit">{view.complete ? `${view.target} UNIQUE BEERS REACHED` : `OF ${view.target} UNIQUE BEERS`}</p>
+    </div>
+    <footer class="sn-progress">
+      <div class="sn-progress-labels"><span class="sn-complete">{view.percentLabel}</span><span class="sn-remaining">{view.remainingLabel}</span></div>
+      <div class="sn-track" role="progressbar" aria-label="Unique beer progress" aria-valuemin="0" aria-valuemax={snapshot.target} aria-valuenow={view.progressValue} aria-valuetext={view.description}><div class="sn-fill" style={{ width: `${view.percentage}%` }}></div></div>
+      <div class="sn-bottom"><span>THE NEXT POUR IS HISTORY.</span><div class="sn-source"><span class="sn-demo">{view.sourceLabel}</span><time class="sn-updated" datetime={snapshot.updatedAt || undefined}>{view.updatedLabel}</time></div></div>
+    </footer>
+    <p class="sn-announcement" aria-live="polite"></p>
+  </section>
+  <div class="sn-controls" hidden>
+    <div class="sn-caption"><strong>Supernova / Afterburn</strong><span>F · Full screen · P · Pause · S · Solar flare · Space · Finale</span></div>
+    <div class="sn-actions">
+      <button class="sn-button" type="button" data-action="fullscreen">Full screen</button>
+      <button class="sn-button" type="button" data-action="pause" aria-pressed="false">Pause</button>
+      <button class="sn-button" type="button" data-action="flare">Solar flare</button>
+      <button class="sn-button sn-primary" type="button" data-action="finale">Preview {view.target}</button>
+    </div>
+  </div>
+  <p class="sn-status" role="status"></p>
+</div>
 
 <script>
-  class BeerProgressCard extends HTMLElement {
-    connectedCallback(): void {
-      const username = this.getAttribute('username') || 'Snoothy';
-      const displayName = this.getAttribute('display-name') || username;
-      const avatarUrl = this.getAttribute('avatar-url') || '';
-      const current = Number(this.getAttribute('current') || 0);
-      const target = Math.max(Number(this.getAttribute('target') || 1000), 1);
-      const source = this.getAttribute('source') || 'fallback';
-      const updatedAt = this.getAttribute('updated-at') || '';
-      const percentage = Math.min(100, Math.round((current / target) * 100));
-      const remaining = Math.max(target - current, 0);
-      const isLive = source === 'scraped' || source === 'untappd';
-      const formatter = new Intl.NumberFormat('en-US');
-      const updatedText = this.formatUpdatedAt(updatedAt);
-      const root = this.shadowRoot ?? this.attachShadow({ mode: 'open' });
-
-      root.innerHTML = `
-        <style>
-          :host {
-            display: block;
-            width: 100%;
-            min-height: 100dvh;
-            color: #fff8e8;
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          }
-
-          * { box-sizing: border-box; }
-
-          .frame {
-            min-height: 100dvh;
-            display: grid;
-            place-items: center;
-            padding: clamp(0.5rem, 3vw, 3rem);
-            overflow: hidden;
-            background:
-              radial-gradient(circle at 20% 6%, rgba(255, 179, 37, 0.26), transparent 15rem),
-              radial-gradient(circle at 86% 43%, rgba(146, 77, 7, 0.34), transparent 24rem),
-              linear-gradient(105deg, #050402 0%, #070604 44%, #010101 100%);
-          }
-
-          .content {
-            width: min(100%, 58rem);
-            display: flex;
-            flex-direction: column;
-            gap: clamp(1.5rem, 4vw, 3.5rem);
-          }
-
-          .profile {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            align-items: center;
-            gap: clamp(1rem, 3vw, 2.5rem);
-          }
-
-          .avatar {
-            width: clamp(8rem, 16vw, 13rem);
-            aspect-ratio: 1;
-            display: block;
-            overflow: hidden;
-            border: clamp(0.24rem, 0.7vw, 0.4rem) solid #ffbd3f;
-            border-radius: 50%;
-            background: #090807;
-            box-shadow: 0 0 0 0.75rem rgba(255, 169, 20, 0.1), 0 0 3rem rgba(255, 168, 17, 0.6);
-          }
-
-          .avatar img {
-            display: block;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-          }
-
-          .name {
-            margin: 0;
-            color: #fff8ed;
-            font-family: Georgia, 'Times New Roman', serif;
-            font-size: clamp(3.4rem, 8vw, 6.4rem);
-            line-height: 0.85;
-            letter-spacing: -0.065em;
-          }
-
-          .tagline {
-            margin: 0.45rem 0 1rem;
-            color: #c0ad9a;
-            font-size: clamp(1rem, 2.4vw, 1.8rem);
-            font-weight: 800;
-          }
-
-          .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.72rem 1.55rem;
-            border: 1px solid rgba(170, 94, 38, 0.68);
-            border-radius: 999px;
-            background: rgba(0, 0, 0, 0.3);
-            color: #fff8ed;
-            font-size: clamp(0.95rem, 2.2vw, 1.6rem);
-            font-weight: 900;
-            text-decoration: none;
-          }
-
-          .card {
-            overflow: hidden;
-            padding: clamp(2.5rem, 6vw, 5.5rem) clamp(1.5rem, 4vw, 3.5rem) clamp(2rem, 4vw, 4rem);
-            border: 1px solid rgba(179, 98, 42, 0.62);
-            border-radius: clamp(1.5rem, 3vw, 3rem);
-            background:
-              radial-gradient(circle at 86% 22%, rgba(255, 188, 55, 0.13), transparent 18rem),
-              linear-gradient(145deg, rgba(10, 9, 6, 0.96), rgba(5, 4, 3, 0.98));
-            box-shadow: 0 1rem 4rem rgba(0, 0, 0, 0.64), inset 0 0 4.5rem rgba(255, 170, 31, 0.035);
-          }
-
-          .ornament {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 1.5rem;
-            margin-bottom: clamp(1.4rem, 3vw, 3rem);
-            color: #f6a51c;
-            font-size: 1.4rem;
-          }
-
-          .ornament::before,
-          .ornament::after {
-            width: 3.2rem;
-            height: 1px;
-            content: '';
-            background: linear-gradient(90deg, transparent, rgba(246, 165, 28, 0.85));
-          }
-
-          .ornament::after { background: linear-gradient(90deg, rgba(246, 165, 28, 0.85), transparent); }
-
-          h1 {
-            max-width: 12ch;
-            margin: 0 auto clamp(1.7rem, 4vw, 3.7rem);
-            color: #fff8ed;
-            font-family: Georgia, 'Times New Roman', serif;
-            font-size: clamp(3.2rem, 9vw, 6.8rem);
-            line-height: 0.88;
-            letter-spacing: -0.06em;
-            text-align: left;
-          }
-
-          .count {
-            display: flex;
-            align-items: baseline;
-            justify-content: center;
-            gap: clamp(0.5rem, 2vw, 1.5rem);
-            margin-bottom: clamp(1.6rem, 3vw, 3.4rem);
-            line-height: 0.9;
-          }
-
-          .current {
-            color: #ffb11e;
-            font: 900 clamp(5rem, 15vw, 10rem) Inter, ui-sans-serif, system-ui, sans-serif;
-            letter-spacing: -0.09em;
-            text-shadow: 0 0 0.2rem #ffe79b, 0 0 1.1rem rgba(255, 172, 15, 0.85), 0 0 3.2rem rgba(255, 124, 0, 0.55);
-          }
-
-          .target {
-            color: #d0c2b3;
-            font: 500 clamp(3.8rem, 11vw, 8rem) Georgia, 'Times New Roman', serif;
-            letter-spacing: -0.09em;
-          }
-
-          .bar {
-            height: clamp(2.9rem, 6vw, 5.2rem);
-            overflow: hidden;
-            border: 0.3rem solid rgba(120, 62, 30, 0.95);
-            border-radius: 999px;
-            background: rgba(4, 4, 3, 0.95);
-            box-shadow: inset 0 0 1.2rem rgba(0, 0, 0, 0.95), 0 0 2.2rem rgba(255, 156, 8, 0.2);
-          }
-
-          .fill {
-            position: relative;
-            width: ${percentage}%;
-            min-width: 1rem;
-            height: 100%;
-            border-radius: inherit;
-            background: linear-gradient(180deg, #ffe878 0%, #ffb529 44%, #e57909 100%);
-            box-shadow: inset 0 0 1.3rem rgba(255, 255, 202, 0.42), 0 0 1.5rem rgba(255, 162, 0, 0.86), 0 0 3.5rem rgba(255, 123, 0, 0.56);
-          }
-
-          .stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            margin-top: clamp(2rem, 4vw, 4.5rem);
-            padding-top: clamp(1.4rem, 3vw, 3rem);
-            border-top: 1px solid rgba(255, 244, 219, 0.16);
-          }
-
-          .stat {
-            display: grid;
-            justify-items: center;
-            gap: 0.6rem;
-            padding: 0 clamp(0.55rem, 1.5vw, 1.8rem);
-            text-align: center;
-          }
-
-          .stat + .stat { border-left: 1px solid rgba(255, 191, 97, 0.2); }
-          .value { color: #ffc64a; font: 800 clamp(1.55rem, 3.6vw, 2.8rem) Georgia, 'Times New Roman', serif; line-height: 1; }
-          .label { color: #b8aa98; font-size: clamp(0.82rem, 1.8vw, 1.25rem); line-height: 1.15; }
-          .link { color: inherit; text-decoration: none; }
-
-          @media (max-width: 720px) {
-            .frame {
-              min-height: 100dvh;
-              padding: 0.5rem;
-            }
-
-            .content {
-              width: min(100%, 27rem);
-              min-height: calc(100dvh - 1rem);
-              gap: 0.5rem;
-              justify-content: center;
-            }
-
-            .profile {
-              gap: 0.6rem;
-              grid-template-columns: auto minmax(0, 1fr);
-            }
-
-            .avatar {
-              width: clamp(3.6rem, 15vw, 4.8rem);
-              border-width: 0.16rem;
-              box-shadow: 0 0 0 0.25rem rgba(255, 169, 20, 0.1), 0 0 1.2rem rgba(255, 168, 17, 0.5);
-            }
-
-            .name { font-size: clamp(1.85rem, 9vw, 2.55rem); line-height: 0.86; }
-            .tagline { margin: 0.14rem 0 0.3rem; font-size: clamp(0.68rem, 3vw, 0.84rem); }
-            .badge { gap: 0.35rem; padding: 0.3rem 0.7rem; font-size: 0.7rem; }
-            .card { padding: 0.7rem 0.7rem 0.62rem; border-radius: 1.08rem; }
-            .ornament { gap: 0.7rem; margin-bottom: 0.35rem; font-size: 0.75rem; }
-            .ornament::before, .ornament::after { width: 1.65rem; }
-            h1 { margin-bottom: 0.48rem; font-size: clamp(1.9rem, 10.5vw, 2.85rem); line-height: 0.84; }
-            .count { gap: 0.32rem; margin-bottom: 0.55rem; }
-            .current { font-size: clamp(2.95rem, 16.5vw, 4.15rem); }
-            .target { font-size: clamp(2.15rem, 11.5vw, 3.15rem); }
-            .bar { height: clamp(1.65rem, 7.5vw, 2.25rem); border-width: 0.18rem; }
-            .stats { margin-top: 0.52rem; padding-top: 0.48rem; }
-            .stat { gap: 0.18rem; padding: 0 0.22rem; }
-            .value { font-size: clamp(0.95rem, 4.6vw, 1.28rem); }
-            .label { font-size: clamp(0.5rem, 2.35vw, 0.68rem); }
-          }
-
-          @media (max-height: 700px) {
-            .tagline,
-            .ornament { display: none; }
-            .content { gap: 0.3rem; }
-            .card { padding: 0.52rem 0.54rem 0.48rem; }
-            h1 { font-size: 1.96rem; margin-bottom: 0.4rem; }
-            .current { font-size: 2.98rem; }
-            .target { font-size: 2.22rem; }
-            .bar { height: 1.55rem; }
-            .stats { margin-top: 0.42rem; padding-top: 0.38rem; }
-          }
-        </style>
-
-        <section class="frame" aria-labelledby="progress-title">
-          <div class="content">
-            <header class="profile">
-              <a class="avatar link" href="https://untappd.com/user/${username}" aria-label="Open ${displayName} on Untappd">
-                <img src="${avatarUrl}" alt="" />
-              </a>
-              <div>
-                <h2 class="name">${displayName}</h2>
-                <p class="tagline">Beer explorer. Flavor chaser.</p>
-                <a class="badge link" href="https://untappd.com/user/${username}">
-                  <span aria-hidden="true">🌾</span>
-                  <span>Hoppy Explorer</span>
-                </a>
-              </div>
-            </header>
-
-            <article class="card">
-              <div class="ornament" aria-hidden="true">🌾</div>
-              <h1 id="progress-title">Road to ${formatter.format(target)} Unique Beers</h1>
-              <div class="count" aria-label="${formatter.format(current)} of ${formatter.format(target)} unique beers">
-                <span class="current">${formatter.format(current)}</span>
-                <span class="target">/ ${formatter.format(target)}</span>
-              </div>
-              <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${target}" aria-valuenow="${current}" aria-label="Unique beer progress">
-                <div class="fill"></div>
-              </div>
-              <div class="stats" aria-label="Progress summary">
-                <div class="stat"><div class="value">${percentage}%</div><div class="label">complete</div></div>
-                <div class="stat"><div class="value">${formatter.format(remaining)}</div><div class="label">to go</div></div>
-                <div class="stat"><div class="value">${isLive ? 'Live' : 'Demo'}</div><div class="label">${updatedText}</div></div>
-              </div>
-            </article>
-          </div>
-        </section>
-      `;
-    }
-
-    private formatUpdatedAt(value: string): string {
-      if (!value) return 'Updated automatically';
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return 'Updated automatically';
-      const diffMs = Date.now() - date.getTime();
-      if (diffMs >= 0 && diffMs < 60 * 60 * 1000) return 'Updated just now';
-      return `Updated ${date.toLocaleDateString('en-GB')}`;
-    }
-  }
-
-  if (!customElements.get('beer-progress-card')) {
-    customElements.define('beer-progress-card', BeerProgressCard);
-  }
+  import { mountSupernova } from '../scripts/supernova';
+  document.querySelectorAll<HTMLElement>('[data-supernova]').forEach(mountSupernova);
 </script>

@@ -5,8 +5,8 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: '17 5 * * *'
-    - cron: '0 18-23 * * 5,6'
+    - cron: "17 5 * * *"
+    - cron: "0 18-23 * * 5,6"
 
 permissions:
   contents: read
@@ -33,7 +33,7 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Fetch Untappd (scrape)
         run: npm run fetch:untappd

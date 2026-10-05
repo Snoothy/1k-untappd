@@ -4,7 +4,11 @@
     "start": "astro dev",
     "fetch:untappd": "node scripts/fetch-untappd.mjs",
     "build": "npm run fetch:untappd && astro check && astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "check": "astro check",
+    "build:static": "astro build",
+    "test:unit": "node --experimental-strip-types --test tests/progress.test.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@astrojs/check": "latest",
@@ -13,5 +17,9 @@
     "preact": "latest",
     "typescript": "latest"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.5"
+  },
+  "type": "module"
 }
